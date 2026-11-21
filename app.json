@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Cantine de Vatel",
+    "slug": "cantine-vatel",
+    "scheme": "cantinevatel",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.vatel.cantine",
+      "infoPlist": {}
+    },
+    "android": {
+      "package": "com.vatel.cantine",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-localization",
+      "expo-font",
+      "expo-sharing",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "La Cantine de Vatel utilise l’appareil photo pour scanner le QR code du comptoir quand tu prends ton plat."
+        }
+      ],
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "La Cantine de Vatel accède à tes photos pour choisir l’image d’un plat."
+        }
+      ]
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "41d7acea-585d-4a6a-b530-f94a92fa48d1"
+      }
+    },
+    "owner": "namila"
+  }
+}

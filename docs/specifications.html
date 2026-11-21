@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Cantine de Vatel — Spécifications</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Inter, Arial, sans-serif; color: #0f172a; font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: space-between; page-break-after: always; }
+  .cover .band { background: #0f172a; color: #fff; border-radius: 18px; padding: 36px 34px; }
+  .mark { display: inline-grid; place-items: center; width: 46px; height: 46px; border-radius: 13px; background: #fff; color: #0f172a; font-weight: 800; font-size: 24px; }
+  .cover h1 { font-size: 34pt; line-height: 1.05; margin: 26px 0 8px; letter-spacing: -0.02em; }
+  .cover .sub { font-size: 13pt; color: rgba(255,255,255,0.78); margin: 0; }
+  .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .meta div { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; }
+  .meta b { display: block; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 4px; }
+  h2 { font-size: 16pt; margin: 22px 0 8px; padding-bottom: 6px; border-bottom: 2px solid #0f172a; page-break-after: avoid; }
+  h3 { font-size: 12pt; margin: 16px 0 6px; page-break-after: avoid; }
+  p { margin: 0 0 8px; }
+  ul { margin: 0 0 10px; padding-left: 18px; }
+  li { margin-bottom: 3px; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 9.5pt; page-break-inside: avoid; }
+  th { text-align: left; background: #0f172a; color: #fff; padding: 7px 9px; font-weight: 600; }
+  td { border-bottom: 1px solid #e2e8f0; padding: 6px 9px; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .tag { display: inline-block; font-size: 8pt; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+  .ok { background: #e8f6ec; color: #15803d; }
+  .todo { background: #fef3e2; color: #b45309; }
+  .no { background: #fdeeee; color: #dc2626; }
+  .note { background: #f1f5f9; border-left: 4px solid #0f172a; padding: 10px 14px; border-radius: 6px; margin: 8px 0 12px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; page-break-inside: avoid; }
+  .box h3 { margin-top: 0; }
+  .pb { page-break-before: always; }
+  .toc li { margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="band">
+    <span class="mark">V</span>
+    <h1>Cantine de Vatel</h1>
+    <p class="sub">Spécifications fonctionnelles et techniques — version 2</p>
+    <p class="sub" style="margin-top:14px">Application mobile (élève, parent, équipe de la cantine) et console web d'administration générale, reliées à une base de données sécurisée et au paiement Mobile Money.</p>
+  </div>
+  <div>
+    <div class="meta">
+      <div><b>Date</b>21 novembre 2026</div>
+      <div><b>Statut</b>Prototype fonctionnel, données réelles</div>
+      <div><b>Version précédente</b>Spécifications v1 (avant le branchement de la base)</div>
+    </div>
+    <h3 style="margin-top:22px">Sommaire</h3>
+    <ol class="toc">
+      <li>Vue d'ensemble et utilisateurs</li>
+      <li>Espace élève / employé</li>
+      <li>Espace parent</li>
+      <li>Espace équipe de la cantine (admin mobile)</li>
+      <li>Administration générale (console web)</li>
+      <li>Règles métier</li>
+      <li>Paiement Mobile Money (Jèko)</li>
+      <li>Notifications</li>
+      <li>Architecture, données et sécurité</li>
+      <li>État d'avancement, avant la mise en production, questions ouvertes</li>
+    </ol>
+  </div>
+</section>
+
+<h2>1. Vue d'ensemble et utilisateurs</h2>
+<p>La Cantine de Vatel permet de commander ses repas à l'avance, de payer avec un solde (wallet) rechargé en Mobile Money, de retirer son plat sans attendre grâce à un QR code, et de piloter la cantine (service, menus, stocks, chiffres). <b>1 crédit = 1 franc CFA.</b></p>
+<table>
+  <tr><th style="width:24%">Utilisateur</th><th style="width:22%">Support</th><th>Rôle</th></tr>
+  <tr><td><b>Élève / employé</b></td><td>App mobile</td><td>Commande ses repas, recharge son solde, retire son plat, donne son avis.</td></tr>
+  <tr><td><b>Parent</b></td><td>App mobile</td><td>Suit les soldes et repas de ses enfants, recharge à distance, reçoit des alertes. Ne commande jamais à la place de l'enfant.</td></tr>
+  <tr><td><b>Équipe de la cantine</b> (admin)</td><td>App mobile</td><td>Gère le service du jour, les menus, les plats, les stocks ; voit les chiffres et prévisions.</td></tr>
+  <tr><td><b>Administration générale</b></td><td>Console web</td><td>Suit les indicateurs (ventes, dépenses, stock en lecture seule), crée les comptes et relie parents et élèves.</td></tr>
+</table>
+<div class="note">Connexion : les élèves utilisent leur <b>matricule</b>, les parents et l'administration un <b>identifiant</b>. Chaque compte reçoit un mot de passe par défaut et doit en choisir un nouveau à la première connexion.</div>
+
+<h2>2. Espace élève / employé</h2>
+<div class="two">
+  <div class="box">
+    <h3>Connexion et profil</h3>
+    <ul>
+      <li>Écran d'accueil plein écran, puis connexion (matricule + mot de passe).</li>
+      <li>Première connexion : nouveau mot de passe, puis choix des allergies (cases + saisie libre).</li>
+      <li>Profil : allergies, mot de passe, historique des opérations, FAQ, note de l'app (👍/👎 + message), langue FR / EN.</li>
+    </ul>
+  </div>
+  <div class="box">
+    <h3>Accueil</h3>
+    <ul>
+      <li>Carte du solde (masquable), bouton « + » pour recharger, dette et crédits utilisés.</li>
+      <li><b>Recommandations personnalisées</b> : uniquement des plats bien notés, commandés au moins deux fois ou mis en favori ; jamais un plat avec allergène ni un plat dont la dernière note est 👎.</li>
+      <li>Menu de la semaine par jour et par catégorie (entrée, plat, dessert), en cartes avec photo, prix et bouton « Commander ».</li>
+    </ul>
+  </div>
+  <div class="box">
+    <h3>Commande</h3>
+    <ul>
+      <li>Fiche du plat : photo, composition, ingrédients retirables (sans oignon, sans piment…), favori.</li>
+      <li>Étape de confirmation, puis débit immédiat du solde.</li>
+      <li>Crédit d'urgence si le solde ne suffit pas (voir règles).</li>
+      <li>Commandes : onglets « En cours » et « Terminé », classées par jour.</li>
+    </ul>
+  </div>
+  <div class="box">
+    <h3>Recharge et offre</h3>
+    <ul>
+      <li>Montant libre (2 000 / 5 000 / 10 000 / 20 000 F ou autre, minimum 500 F).</li>
+      <li>Wave, Orange Money, MTN MoMo, Moov Money, Djamo, avec ou sans numéro.</li>
+      <li>Onglet « Offres » : abonnement annuel (plat à prix réduit).</li>
+      <li>La dette d'urgence est remboursée en premier.</li>
+    </ul>
+  </div>
+  <div class="box">
+    <h3>Favoris et commande automatique</h3>
+    <ul>
+      <li>Cœur sur un plat pour l'ajouter aux favoris.</li>
+      <li>« Commander automatiquement » : dès que le plat est au menu publié des 7 prochains jours, il est commandé et l'élève est prévenu.</li>
+      <li>Pas de commande si solde insuffisant (l'élève est prévenu), allergie, ou catégorie déjà prise ce jour-là.</li>
+    </ul>
+  </div>
+  <div class="box">
+    <h3>Retrait, avis, signalement</h3>
+    <ul>
+      <li>Pastille « Plat non disponible » puis « Plat disponible » (avec la table) quand la cantine l'appelle, en direct.</li>
+      <li>Scan du QR code du comptoir : valide les commandes <b>du jour</b> ; hors connexion, le scan est envoyé plus tard.</li>
+      <li>Avis 👍 / 👎 + commentaire ; « Plat non reçu ? Signaler » envoie un signalement à la cantine.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>3. Espace parent</h2>
+<ul>
+  <li>Accueil : choix de l'enfant, solde, dette, bandeau « Solde bas », repas à venir (lecture seule), offre annuelle.</li>
+  <li>Historique par enfant : repas (reçu, à venir) et opérations du wallet.</li>
+  <li>Recharge et abonnement à distance, en Mobile Money ; impossible pour un élève qui n'est pas son enfant.</li>
+  <li>Alertes : seuil de solde bas réglable (2 000 F par défaut), plat pris à crédit, paiement reçu.</li>
+  <li>Le parent est vouvoyé ; FAQ et note de l'app propres au parent.</li>
+</ul>
+
+<h2 class="pb">4. Espace équipe de la cantine (admin mobile)</h2>
+<table>
+  <tr><th style="width:22%">Écran</th><th>Fonctions</th></tr>
+  <tr><td><b>Tableau de bord</b></td><td>Recettes jour / semaine / mois (tarif normal et promo), plats vendus, satisfaction, plat le plus commandé, crédits en cours, retraits du jour, signalements à traiter, graphiques, prévisions, rapport.</td></tr>
+  <tr><td><b>Service</b></td><td>Choix du jour ; quantités par plat ; <b>variantes en cuisine</b> : chaque variante (« standard », « sans oignon », « sans oignon, sans piment »…) a sa couleur et son compteur, repère à coller sur le bol ou le ticket ; <b>lot allergie</b> séparé (élèves ayant déclaré une allergie, avec le détail) à préparer à part, avec des ustensiles propres et à servir en premier ; mode « appel par plat » (bouton Appeler) ou « tables » (table A–F par plat) ; QR code du comptoir (régénérable) ; heure limite avec « +30 min » ; signalements « plat non reçu » (résoudre ou rembourser).</td></tr>
+  <tr><td><b>Menus</b></td><td>Menu de chaque jour par catégorie : remplacer, ajouter, retirer un plat ; brouillon puis « Publier ». Catalogue des plats : créer, modifier (photo, prix, composition, ingrédients retirables, allergènes), retirer du catalogue.</td></tr>
+  <tr><td><b>Stocks</b></td><td>Niveau de chaque ingrédient par rapport à son seuil ; journal des <b>achats</b> (produit, quantité, montant, fournisseur, plats concernés) et de la <b>consommation</b> ; inventaire de la semaine ; créer, modifier, supprimer un ingrédient avec sa recette (quantité par portion).</td></tr>
+  <tr><td><b>Compte et réglages</b></td><td>Heure limite de commande (pas de 15 min, 7 h – 14 h), offre annuelle (prix du plat, prix de l'abonnement), règle du crédit d'urgence (nombre de plats, frais) ; avis et commentaires ; rapport détaillé et export Excel.</td></tr>
+</table>
+<h3>Prévisions (calcul statistique, sans IA)</h3>
+<ul>
+  <li><b>Plats à préparer demain</b> : le plus grand entre les commandes déjà passées et la moyenne des 4 mêmes jours précédents.</li>
+  <li><b>Recettes de la semaine suivante</b> : moyenne des recettes du même jour de la semaine sur 4 semaines.</li>
+  <li><b>Budget d'achats</b> : consommation moyenne d'une semaine (commandes × recettes) moins le stock, multipliée par le prix des ingrédients.</li>
+  <li><b>Écart de stock</b> : consommation notée comparée à la consommation théorique des commandes.</li>
+</ul>
+
+<h2>5. Administration générale (console web)</h2>
+<div class="two">
+  <div class="box">
+    <h3>Tableau de bord</h3>
+    <ul>
+      <li>Jour / semaine / mois : recettes (avec évolution), <b>dépenses</b> (achats), <b>résultat</b>, plats vendus, satisfaction, plat le plus commandé, annulations, retraits.</li>
+      <li>Graphiques recettes / dépenses et plats vendus.</li>
+      <li>Stock en <b>lecture seule</b> : valeur du stock, ingrédients sous le seuil, écart de stock, achats de la semaine.</li>
+      <li>Élèves, parents, abonnés, crédits en cours.</li>
+      <li>Pas de prévisions ni de saisie de stock.</li>
+    </ul>
+  </div>
+  <div class="box">
+    <h3>Utilisateurs</h3>
+    <ul>
+      <li>Liste filtrable (tous, élèves, parents) avec recherche, solde, dette, liens, statut du mot de passe.</li>
+      <li>Créer un élève (matricule, nom, classe) ou un parent (identifiant, nom, enfants à rattacher) avec un <b>mot de passe par défaut</b> affiché une fois.</li>
+      <li>Réinitialiser un mot de passe ; rattacher ou détacher parents et élèves.</li>
+    </ul>
+  </div>
+</div>
+
+<h2 class="pb">6. Règles métier</h2>
+<table>
+  <tr><th style="width:26%">Sujet</th><th>Règle</th></tr>
+  <tr><td>Heure limite</td><td>Commande possible pour un jour futur, ou le jour même avant l'heure limite (10 h par défaut, réglable).</td></tr>
+  <tr><td>Un plat par catégorie</td><td>Au plus une entrée, un plat de résistance et un dessert par élève et par jour.</td></tr>
+  <tr><td>Paiement</td><td>Débit immédiat du solde après confirmation.</td></tr>
+  <tr><td>Annulation</td><td>Possible avant l'heure limite du jour de la commande, et seulement tant que le plat n'a pas été appelé ; remboursement immédiat (ou effacement de la dette).</td></tr>
+  <tr><td>Crédit d'urgence</td><td>Si le solde ne suffit pas : jusqu'à 3 plats à crédit (réglable), le 1er au prix normal, les suivants avec des frais de dépannage (10 % par défaut, réglables). La recharge rembourse la dette en premier.</td></tr>
+  <tr><td>Abonnement annuel</td><td>Prix réduit sur les plats de résistance (800 F au lieu de 1 000 F par défaut) ; ne recharge pas le solde.</td></tr>
+  <tr><td>Commande automatique</td><td>Favori avec l'option activée : commande dans les 7 prochains jours si le solde suffit (jamais à crédit), sans allergie, catégorie libre, avant l'heure limite ; l'élève est prévenu et peut annuler.</td></tr>
+  <tr><td>Retrait</td><td>Scan du QR code unique du comptoir ; seules les commandes du jour sont validées ; hors connexion, mise en attente puis envoi.</td></tr>
+  <tr><td>Signalement</td><td>« Plat non reçu » possible sur une commande reçue, une seule fois ; l'admin résout ou rembourse ; l'élève est prévenu.</td></tr>
+  <tr><td>Allergies</td><td>Un plat concerné n'est jamais recommandé ni commandé automatiquement, et affiche un avertissement.</td></tr>
+  <tr><td>Avis</td><td>👍 / 👎 (retoucher le même pouce retire l'avis) ; les pourcentages affichés viennent des vrais avis.</td></tr>
+  <tr><td>Langue</td><td>Détectée au téléphone (anglais sinon français), pastille FR | EN.</td></tr>
+</table>
+
+<h2>7. Paiement Mobile Money (Jèko)</h2>
+<ul>
+  <li>Moyens acceptés : <b>Wave, Orange Money, MTN MoMo, Moov Money, Djamo</b>.</li>
+  <li>Avec un numéro : paiement envoyé directement à l'opérateur (validation USSD pour MTN et Moov). Sans numéro : page de paiement Jèko.</li>
+  <li>Une référence unique par tentative ; montant minimum 100 F (500 F dans l'app).</li>
+  <li>Le solde n'est crédité qu'à la réception du <b>webhook signé</b> de Jèko (signature HMAC-SHA256 vérifiée), une seule fois par paiement.</li>
+  <li>Les clés Jèko sont stockées dans les secrets du serveur, jamais dans l'application.</li>
+</ul>
+
+<h2>8. Notifications</h2>
+<ul>
+  <li>La <b>cloche</b> de l'app lit l'historique des notifications de la personne connectée, mis à jour en direct.</li>
+  <li>Événements : plat appelé (« C'est ton tour »), solde bas, paiement reçu, plat commandé à crédit (élève et parents), commande automatique réussie ou impossible, signalement traité.</li>
+  <li>Notifications sur l'écran du téléphone (push) : <b>désactivées pour la première version</b> ; prêtes côté serveur, elles demandent une version « development build » et Firebase pour Android.</li>
+</ul>
+
+<h2 class="pb">9. Architecture, données et sécurité</h2>
+<table>
+  <tr><th style="width:26%">Brique</th><th>Choix</th></tr>
+  <tr><td>App mobile</td><td>React Native, Expo SDK 58, expo-router, zustand, TypeScript ; FR / EN.</td></tr>
+  <tr><td>Console web</td><td>React + Vite, graphiques Recharts.</td></tr>
+  <tr><td>Base de données</td><td>Supabase (PostgreSQL), région eu-west-1, fuseau Africa/Abidjan.</td></tr>
+  <tr><td>Règles métier</td><td>Exécutées dans la base (fonctions SQL) : commande, annulation, retrait, avis, crédit, remboursement, commande automatique, tableau de bord.</td></tr>
+  <tr><td>Sécurité</td><td>Règles d'accès par ligne : chacun ne voit que ses données (un parent : ses enfants ; l'admin : tout) ; l'argent n'est modifié que par des fonctions serveur ; le code du QR n'est lisible que par l'admin.</td></tr>
+  <tr><td>Fonctions serveur</td><td><code>create-payment</code>, <code>jeko-webhook</code>, <code>manage-users</code> (création des comptes, réservée à l'admin).</td></tr>
+  <tr><td>Stockage</td><td>Photos des plats envoyées par l'admin (5 Mo max, JPEG / PNG / WebP).</td></tr>
+  <tr><td>Données principales</td><td>profils, liens parent-élève, wallets, opérations, plats, ingrédients, recettes, menus, réglages, commandes, favoris, propositions, appels du service, signalements, achats, consommations, inventaires, paiements, abonnements, notifications, avis sur l'app.</td></tr>
+</table>
+
+<h2>10. État d'avancement</h2>
+<table>
+  <tr><th style="width:40%">Élément</th><th style="width:18%">État</th><th>Commentaire</th></tr>
+  <tr><td>Espaces élève, parent, admin mobile</td><td><span class="tag ok">Fait</span></td><td>Reliés à la base.</td></tr>
+  <tr><td>Console web d'administration générale</td><td><span class="tag ok">Fait</span></td><td>À essayer de bout en bout (création d'un compte).</td></tr>
+  <tr><td>Paiement Jèko</td><td><span class="tag ok">Fait</span></td><td>Recharge à valider de bout en bout ; abonnement payé non testé.</td></tr>
+  <tr><td>Notifications dans l'app (cloche)</td><td><span class="tag ok">Fait</span></td><td></td></tr>
+  <tr><td>Notifications push sur le téléphone</td><td><span class="tag todo">Reporté</span></td><td>Development build + Firebase nécessaires.</td></tr>
+  <tr><td>« Mot de passe oublié »</td><td><span class="tag no">À faire</span></td><td>Aujourd'hui : l'admin réinitialise depuis la console web.</td></tr>
+  <tr><td>Désactivation ou suppression d'un compte</td><td><span class="tag no">À faire</span></td><td></td></tr>
+  <tr><td>Tests complets sur téléphone</td><td><span class="tag todo">À faire</span></td><td>Parcours des trois espaces, scan réel.</td></tr>
+</table>
+
+<h3>Avant la mise en production</h3>
+<ul>
+  <li>Retirer la recharge et l'abonnement de démonstration (fonctions et lien dans l'app) et les comptes de test.</li>
+  <li>Activer la protection contre les mots de passe divulgués (Supabase Auth).</li>
+  <li>Citer les auteurs des photos de plats (licences Creative Commons) ou les remplacer par des photos de la cantine.</li>
+  <li>Vérifier les pages de retour après paiement et les conditions d'utilisation.</li>
+</ul>
+
+<h3>Questions ouvertes</h3>
+<ul>
+  <li>Prix définitif de l'abonnement annuel (20 000 F en démonstration) et du plat abonné.</li>
+  <li>Comptes séparés pour l'équipe de la cantine et la direction (aujourd'hui un seul rôle admin).</li>
+  <li>Inscription et connexion des parents sans email (SMS ?).</li>
+  <li>Prévisions plus fines (jours fériés, vacances scolaires).</li>
+</ul>
+
+</body>
+</html>

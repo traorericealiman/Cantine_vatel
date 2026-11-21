@@ -1,0 +1,72 @@
+[
+ {
+  "dishId": "garba",
+  "title": "Le Garba.jpg",
+  "author": "Didierwiki",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Le_Garba.jpg"
+ },
+ {
+  "dishId": "att-poisson",
+  "title": "Attiéké au poisson grillée.JPG",
+  "author": "Papischou",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Atti%C3%A9k%C3%A9_au_poisson_grill%C3%A9e.JPG"
+ },
+ {
+  "dishId": "tcheb",
+  "title": "Riz au poisson 01.jpg",
+  "author": "Seydou221",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Riz_au_poisson_01.jpg"
+ },
+ {
+  "dishId": "sauce-graine",
+  "title": "Sauce graine 02.jpg",
+  "author": "KONE IF",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Sauce_graine_02.jpg"
+ },
+ {
+  "dishId": "poulet",
+  "title": "Poulet braisé 25122024.jpg",
+  "author": "MIA20102",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Poulet_brais%C3%A9_25122024.jpg"
+ },
+ {
+  "dishId": "salade",
+  "title": "Salade de crudités 2025 A.jpg",
+  "author": "Renhour48",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Salade_de_crudit%C3%A9s_2025_A.jpg"
+ },
+ {
+  "dishId": "soupe",
+  "title": "Soupe de poisson en cuisson.jpg",
+  "author": "Miriam Kato",
+  "license": "CC BY 2.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Soupe_de_poisson_en_cuisson.jpg"
+ },
+ {
+  "dishId": "fruits",
+  "title": "Dessert salade de fruits.jpg",
+  "author": "Mendel264",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Dessert_salade_de_fruits.jpg"
+ },
+ {
+  "dishId": "gateau",
+  "title": "Coco gâteau 06.jpg",
+  "author": "M keita1321",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Coco_g%C3%A2teau_06.jpg"
+ },
+ {
+  "dishId": "yaourt",
+  "title": "Yaourt Grotto en Côte d'Ivoire.jpg",
+  "author": "Yasield",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Yaourt_Grotto_en_C%C3%B4te_d%27Ivoire.jpg"
+ }
+]
