@@ -89,10 +89,10 @@ Tous les comptes ont un **solde de 0 F** : il faut d'abord recharger le wallet (
 | --- | --- | --- |
 | Élève | `VAT-24-0413` | `Vatel2026` |
 | Parent | `parent.test` (parent de l'élève `VAT-24-0413`) | `Parent2026` |
-| Admin restaurant (application mobile) | `admin` | `Vatel2026` |
-| Admin web (console `web-admin`) | `admin` | `Vatel2026` |
+| Admin restaurant (application mobile) | `admin.test` | `Admin2026` |
+| Admin web (console `web-admin`) | `admin.test` | `Admin2026` |
 
-Les deux espaces administrateur utilisent le même compte `admin`.
+Les deux espaces administrateur utilisent le même compte `admin.test`.
 
 ## Configuration
 
