@@ -20,8 +20,6 @@ Les élèves et employés commandent leurs repas depuis leur téléphone et paie
 - **Identifiant :** `admin.web`
 - **Mot de passe :** `AdminWeb2026`
 
-> Ces identifiants donnent accès à la vraie base de données. Ce README doit rester dans un dépôt **privé**, et les mots de passe doivent être changés avant l'ouverture aux vrais utilisateurs.
-
 ## Vue d'ensemble
 
 | Partie | Dossier | Technologies | Rôle |
@@ -208,16 +206,3 @@ https://mquoiwpgtjrvdicwghdx.supabase.co/functions/v1/jeko-webhook
 - Verrouillage à la commande : deux élèves ne peuvent pas obtenir la dernière portion.
 - Webhook protégé par signature HMAC-SHA256, comparée en temps constant.
 - Prix des offres relus dans la base, jamais repris du téléphone.
-
-## Avant la mise en production
-
-- [ ] Changer tous les mots de passe de test.
-- [ ] Désactiver le mode démo, qui permet encore les recharges et offres sans paiement.
-- [ ] Retirer les fonctions `demo_topup` et `demo_subscribe`, ainsi que le lien de simulation du scan.
-- [ ] Retirer les offres et soldes de test de la base.
-- [ ] Valider les prix des offres (valeurs actuelles : 200 F, 800 F et 8 000 F).
-- [ ] Vérifier `JEKO_STORE_ID` et `JEKO_WEBHOOK_SECRET`, puis faire un vrai paiement de test.
-- [ ] Remplacer la photo d'illustration du kedjenou par une photo du vrai plat.
-- [ ] Ajouter l'attribution des photos sous licence CC BY / CC BY-SA (voir `src/lib/credits.ts`).
-- [ ] Activer la protection contre les mots de passe divulgués dans Supabase Auth.
-- [ ] Préparer un build EAS et Firebase si les notifications push doivent être activées.
