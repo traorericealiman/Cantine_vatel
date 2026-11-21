@@ -8,6 +8,8 @@ Les élèves et employés commandent leurs repas depuis leur téléphone et paie
 
 ### Application mobile
 
+**Télécharger l'APK Android :** https://expo.dev/artifacts/eas/EA5w82MwpFFIMnrN3L8mHj7YTwZhshWGgw3xjY7QG-M.apk
+
 | Rôle | Identifiant | Mot de passe |
 | --- | --- | --- |
 | Élève | `VAT-24-0412` | `AZERTY@1234` |
