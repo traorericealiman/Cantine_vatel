@@ -81,6 +81,18 @@ npm run lint        # ESLint
 npm test            # règles métier : recharge, crédit d'urgence, allergies, catégories
 ```
 
+## Comptes de test
+
+Tous les comptes ont un **solde de 0 F** : il faut d'abord recharger le wallet (Mobile Money) avant de commander.
+
+| Rôle | Identifiant | Mot de passe |
+| --- | --- | --- |
+| Élève | `VAT-24-0412` (Aya Koffi) | `Vatel2026` |
+| Élève | `VAT-24-0413` (Kevin Koffi) | `Vatel2026` |
+| Parent | `parent.koffi` (Marie Koffi, parent d'Aya et de Kevin) | `Vatel2026` |
+
+Le compte administrateur est communiqué séparément.
+
 ## Configuration
 
 Les clés publiques Supabase sont dans `src/lib/supabase.ts` (et dans `web-admin/`). Les clés Jèko ne sont jamais dans le code : elles sont enregistrées comme secrets des fonctions Edge (`JEKO_API_KEY`, `JEKO_API_KEY_ID`, `JEKO_STORE_ID`, `JEKO_WEBHOOK_SECRET`). Le webhook à déclarer chez Jèko est la fonction `jeko-webhook` du projet Supabase.
