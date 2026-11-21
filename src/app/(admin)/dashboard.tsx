@@ -5,7 +5,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { AdminHeader, BarChart, Section, StatCard } from '../../components/admin';
 import { Reveal, Tap, useCountUp } from '../../components/fx';
 import { Button, Card, DishPhoto, Screen, Segmented, T } from '../../components/ui';
-import { DISHES } from '../../lib/data';
 import { signedPct } from '../../lib/format';
 import { Key, cap, dishName, longDay, money, shortDay } from '../../lib/i18n';
 import { colors, radius } from '../../lib/theme';
@@ -18,19 +17,20 @@ const PERIOD_LABEL: Record<Period, Key> = { day: 'aPeriodToday', week: 'aPeriodW
 function RevenueHero({ period }: { period: Period }) {
   const { t } = useI18n();
   const k = useAdmin((s) => s.stats[period]);
-  const shown = useCountUp(k.revenue);
+  const ready = useAdmin((s) => s.statsReady);
+  const shown = useCountUp(k.revenue, 420);
   const delta = k.previous > 0 ? (k.revenue - k.previous) / k.previous : 0;
   const up = delta >= 0;
   const row = (label: string, count: number, amount: number) => (
     <View style={{ flex: 1 }}>
-      <T v="caption" color="rgba(255,255,255,0.6)">
+      <T v="caption" color="rgba(255,255,255,0.88)">
         {label}
       </T>
       <T v="headline" color={colors.white} style={{ marginTop: 2 }}>
-        {money(amount)}
+        {ready ? money(amount) : '—'}
       </T>
-      <T v="caption" color="rgba(255,255,255,0.6)">
-        {count}
+      <T v="caption" color="rgba(255,255,255,0.88)">
+        {ready ? count : '—'}
       </T>
     </View>
   );
@@ -43,17 +43,19 @@ function RevenueHero({ period }: { period: Period }) {
         pointerEvents="none"
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
-      <T v="subhead" color="rgba(255,255,255,0.7)">
+      <T v="subhead" color="rgba(255,255,255,0.88)">
         {t('aCollected')} · {t(PERIOD_LABEL[period]).toLowerCase()}
       </T>
       <T color={colors.white} style={{ fontSize: 40, lineHeight: 48, fontWeight: '700', letterSpacing: -0.6, marginTop: 2 }}>
-        {money(shown)}
+        {ready ? money(shown) : '—'}
       </T>
-      <View style={{ alignSelf: 'flex-start', marginTop: 6, backgroundColor: up ? 'rgba(74,222,128,0.16)' : 'rgba(248,113,113,0.16)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-        <T v="caption" weight="700" color={up ? '#4ADE80' : '#F87171'}>
-          {t('aVsPrevious', { delta: signedPct(delta) })}
-        </T>
-      </View>
+      {ready ? (
+        <View style={{ alignSelf: 'flex-start', marginTop: 6, backgroundColor: up ? 'rgba(74,222,128,0.16)' : 'rgba(248,113,113,0.16)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+          <T v="caption" weight="700" color={up ? '#4ADE80' : '#F87171'}>
+            {t('aVsPrevious', { delta: signedPct(delta) })}
+          </T>
+        </View>
+      ) : null}
       <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.12)', marginVertical: 16 }} />
       <View style={{ flexDirection: 'row', gap: 12 }}>
         {row(t('aStandard'), k.standard, k.standardRevenue)}
@@ -68,9 +70,11 @@ export default function Dashboard() {
   const [period, setPeriod] = useState<Period>('day');
   const [chart, setChart] = useState<'revenue' | 'sold'>('revenue');
   const stats = useAdmin((s) => s.stats);
+  const ready = useAdmin((s) => s.statsReady);
+  const catalog = useAdmin((s) => s.catalog);
   const openIssues = useAdmin((s) => s.issues.filter((i) => i.status === 'open').length);
   const k = stats[period];
-  const top = k.topDish ? DISHES.find((d) => d.id === k.topDish) : undefined;
+  const top = k.topDish ? catalog.find((d) => d.id === k.topDish) : undefined;
   const points: ChartPoint[] = period === 'day' ? stats.chartDay : period === 'week' ? stats.chartWeek : stats.chartMonth;
   const labelOf = (p: ChartPoint, i: number) =>
     period === 'day'
@@ -85,7 +89,7 @@ export default function Dashboard() {
   const data = points.map((p, i) => ({ label: labelOf(p, i), value: chart === 'revenue' ? p.revenue : p.sold }));
 
   return (
-    <Screen topPad={10}>
+    <Screen topPad={10} fixedHeader>
       <AdminHeader title={t('aDashboard')} subtitle={cap(longDay(serviceDay(), lang))} />
 
       <Reveal delay={30}>
@@ -103,14 +107,14 @@ export default function Dashboard() {
 
       <Reveal delay={120}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 14 }}>
-          <StatCard label={t('aDishesSold')} value={k.sold.toLocaleString('fr-FR')} detail={t(PERIOD_LABEL[period])} />
-          <StatCard label={t('aSatisfaction')} value={k.sold > 0 && k.satisfaction > 0 ? `${k.satisfaction} %` : '—'} detail={t(PERIOD_LABEL[period])} tone="green" />
+          <StatCard label={t('aDishesSold')} value={ready ? k.sold.toLocaleString('fr-FR') : '—'} detail={t(PERIOD_LABEL[period])} />
+          <StatCard label={t('aSatisfaction')} value={ready && k.sold > 0 && k.satisfaction > 0 ? `${k.satisfaction} %` : '—'} detail={t(PERIOD_LABEL[period])} tone="green" />
           {openIssues > 0 ? <StatCard label={t('aIssues')} value={String(openIssues)} detail={t('aIssueOpen')} tone="red" /> : null}
-          <StatCard label={t('aCredits')} value={money(stats.creditTotal)} detail={t('aCreditStudents', { n: stats.creditStudents })} tone="warm" />
+          <StatCard label={t('aCredits')} value={ready ? money(stats.creditTotal) : '—'} detail={ready ? t('aCreditStudents', { n: stats.creditStudents }) : undefined} tone="warm" />
           <StatCard
             label={t('aPickups')}
-            value={`${stats.pickupsToday ? Math.round((stats.pickupsDone / stats.pickupsToday) * 100) : 0} %`}
-            detail={`${stats.pickupsDone} / ${stats.pickupsToday} · ${t('aPeriodToday').toLowerCase()}`}
+            value={ready ? `${stats.pickupsToday ? Math.round((stats.pickupsDone / stats.pickupsToday) * 100) : 0} %` : '—'}
+            detail={ready ? `${stats.pickupsDone} / ${stats.pickupsToday} · ${t('aPeriodToday').toLowerCase()}` : undefined}
           />
         </View>
       </Reveal>
@@ -143,7 +147,7 @@ export default function Dashboard() {
                   <T v="title2" color={colors.white}>
                     {dishName(top, lang)}
                   </T>
-                  <T v="footnote" color="rgba(255,255,255,0.75)">
+                  <T v="footnote" color="rgba(255,255,255,0.88)">
                     {t('aVotes', { n: top.votes })}
                   </T>
                 </View>
@@ -166,14 +170,14 @@ export default function Dashboard() {
           <Card padded={false}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}>
               <T v="body">{t('aForecastDishes')}</T>
-              <T v="headline">{stats.forecastDishes}</T>
+              <T v="headline">{ready ? stats.forecastDishes : '—'}</T>
             </View>
             <View style={{ height: 1, backgroundColor: colors.line, marginLeft: 16 }} />
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}>
               <T v="body" style={{ flex: 1, paddingRight: 8 }}>
                 {t('aForecastRevenue')}
               </T>
-              <T v="headline">{money(stats.forecastWeekRevenue)}</T>
+              <T v="headline">{ready ? money(stats.forecastWeekRevenue) : '—'}</T>
             </View>
           </Card>
         </Section>

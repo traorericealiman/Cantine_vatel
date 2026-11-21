@@ -69,7 +69,7 @@ export default function Users() {
               </button>
             ))}
           </div>
-          <input className="input" style={{ width: 260 }} placeholder="Rechercher un nom ou un identifiant" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <input className="input search" placeholder="Rechercher un nom ou un identifiant" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
         <button className="btn" onClick={() => setCreating(true)}>
           + Nouvel utilisateur
@@ -97,8 +97,8 @@ export default function Users() {
       ) : null}
       {error ? <div className="error">{error}</div> : null}
 
-      <div className="card" style={{ padding: 0, overflow: 'auto' }}>
-        <table>
+      <div className="card flush">
+        <table className="users">
           <thead>
             <tr>
               <th>Identifiant</th>
@@ -117,18 +117,18 @@ export default function Users() {
               const links = linksOf(u);
               return (
                 <tr key={u.id}>
-                  <td>
+                  <td data-label="Identifiant">
                     <strong>{u.login}</strong>
                   </td>
-                  <td>{u.full_name}</td>
-                  <td>
+                  <td data-label="Nom">{u.full_name}</td>
+                  <td data-label="Rôle">
                     <span className={`badge ${u.role === 'admin' ? 'warm' : ''}`}>{ROLE_LABEL[u.role]}</span>
                   </td>
-                  <td className="muted">{u.class_name ?? '—'}</td>
-                  <td>{u.role === 'student' && w ? <>{money(w.balance)}{w.debt > 0 ? <span className="badge warm" style={{ marginLeft: 6 }}>dette {money(w.debt)}</span> : null}</> : <span className="muted">—</span>}</td>
-                  <td className="muted">{links.length ? links.map((l) => l.first_name).join(', ') : u.role === 'admin' ? '—' : 'aucun'}</td>
-                  <td>{u.must_change_password ? <span className="badge warm">Mot de passe provisoire</span> : <span className="badge green">Actif</span>}</td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <td className="muted" data-label="Classe">{u.class_name ?? '—'}</td>
+                  <td data-label="Solde">{u.role === 'student' && w ? <>{money(w.balance)}{w.debt > 0 ? <span className="badge warm" style={{ marginLeft: 6 }}>dette {money(w.debt)}</span> : null}</> : <span className="muted">—</span>}</td>
+                  <td className="muted" data-label="Liens">{links.length ? links.map((l) => l.first_name).join(', ') : u.role === 'admin' ? '—' : 'aucun'}</td>
+                  <td data-label="Statut">{u.must_change_password ? <span className="badge warm">Mot de passe provisoire</span> : <span className="badge green">Actif</span>}</td>
+                  <td className="actions">
                     {u.role !== 'admin' ? (
                       <>
                         <button className="btn soft small" onClick={() => setManage(u)}>

@@ -4,7 +4,8 @@ import {
   Allergen,
   Dish,
   DISHES,
-  PROMO,
+  OFFERS,
+  OfferId,
   SERVICE,
   SETTINGS,
   ARCHIVED,
@@ -13,16 +14,19 @@ import {
   dateKey,
   dishById,
   isOpen,
+  discounted,
+  remaining,
+  setAvailability,
   setDbMenu,
 } from '../lib/data';
 import { registerForPush, unregisterPush } from '../lib/push';
 import { emailOf, supabase } from '../lib/supabase';
 import { Key, Lang, detectLang, translate } from '../lib/i18n';
 import { allergyHits, categoryTaken, nextId, simulate, strip, topup } from '../lib/rules';
-import type { Child, DbNotif, Order, Proposal, Quote, Role, Rule, Tx, Wallet } from '../lib/types';
+import type { ActiveOffer, Child, DbNotif, Order, Proposal, Quote, Role, Rule, Tx, Wallet } from '../lib/types';
 
 export { allergyHits, categoryTaken, simulate, topup };
-export type { Child, DbNotif, Order, Proposal, Quote, Role, Rule, Tx, Wallet };
+export type { ActiveOffer, Child, DbNotif, Order, Proposal, Quote, Role, Rule, Tx, Wallet };
 
 /** Enfants rattachés au parent de démonstration. `c1` est l'élève de démonstration (mêmes données que son espace). */
 export const AYA_ID = 'c1';
@@ -64,7 +68,8 @@ interface State {
   // espace parent
   selectedChild: string;
   lowThreshold: number;
-  subscriptions: Record<string, boolean>;
+  /** Offre en cours par élève (absent = aucune offre). */
+  subscriptions: Record<string, ActiveOffer | undefined>;
   siblings: Record<string, Wallet>;
 
   setLang: (l: Lang) => void;
@@ -83,7 +88,7 @@ interface State {
   addCustomAllergy: (name: string) => void;
   removeCustomAllergy: (name: string) => void;
   dismissTurn: (id: string) => void;
-  placeOrder: (dishId: string, date: string, removed: string[]) => 'ok' | 'closed' | 'limit' | 'duplicate' | 'category';
+  placeOrder: (dishId: string, date: string, removed: string[]) => 'ok' | 'closed' | 'limit' | 'duplicate' | 'category' | 'soldout';
   cancelOrder: (id: string) => void;
   confirmReceived: (id: string) => void;
   voteOrder: (id: string, v: 1 | -1) => void;
@@ -96,16 +101,23 @@ interface State {
   setFavoriteMode: (id: string, mode: 'off' | 'ask' | 'auto') => void;
   addFavorite: (dishId: string) => void;
   removeRule: (id: string) => void;
-  answerProposal: (id: string, accept: boolean) => 'ok' | 'declined' | 'closed' | 'category' | 'limit' | 'gone';
+  answerProposal: (id: string, accept: boolean) => 'ok' | 'declined' | 'closed' | 'category' | 'limit' | 'soldout' | 'gone';
   /** Dernière commande refusée par le serveur (pour l'expliquer à l'élève). */
   orderError: { code: string; at: number } | null;
   selectChild: (id: string) => void;
   rechargeChild: (id: string, amount: number) => void;
-  subscribe: (id: string) => void;
+  subscribe: (id: string, offer: OfferId) => void;
   setLowThreshold: (n: number) => void;
 }
 
 // ---------- Synchronisation avec Supabase
+
+/** Offre en cours d'après une ligne `subscriptions` (absente ou terminée = aucune). */
+const activeOffer = (r: { offer_id: string; ends_on: string } | null | undefined): ActiveOffer | undefined => {
+  if (!r || r.ends_on < dateKey(new Date())) return undefined;
+  const o = OFFERS.find((x) => x.id === r.offer_id);
+  return o ? { offer: o.id, pct: o.pct, endsOn: r.ends_on } : undefined;
+};
 
 const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(id);
 
@@ -127,6 +139,7 @@ const mapOrder = (r: any): Order => ({
   price: r.price,
   fee: r.fee,
   onCredit: r.on_credit,
+  listPrice: r.list_price ?? undefined,
   status: r.status,
   receivedAt: r.received_at ? Date.parse(r.received_at) : undefined,
   vote: r.vote ?? undefined,
@@ -141,7 +154,7 @@ async function fetchWallet(sid: string): Promise<Wallet> {
   ]);
   const txs: Tx[] = (t.data ?? [])
     .filter((r: any) => r.kind !== 'subscription')
-    .map((r: any) => ({ id: r.id, kind: r.kind, dishId: r.dish_id ?? undefined, amount: r.amount, credit: r.credit, at: Date.parse(r.at) }))
+    .map((r: any) => ({ id: r.id, kind: r.kind, dishId: r.dish_id ?? undefined, amount: r.amount, credit: r.credit, listAmount: r.list_amount ?? undefined, at: Date.parse(r.at) }))
     .reverse();
   return {
     balance: w.data?.balance ?? 0,
@@ -154,12 +167,15 @@ async function fetchWallet(sid: string): Promise<Wallet> {
 
 /** Réglages de la cantine et menus publiés : communs à tous les rôles. */
 export async function loadGlobal(): Promise<Record<string, string[]>> {
-  const [s, m, c, rt, ds] = await Promise.all([
-    supabase.from('settings').select('cutoff_minutes,standard_price,promo_dish_price,promo_fee,service_mode,max_credit,credit_fee_rate,demo_mode').eq('id', 1).maybeSingle(),
+  const [s, m, c, rt, ds, of, av, th] = await Promise.all([
+    supabase.from('settings').select('cutoff_minutes,service_mode,max_credit,credit_fee_rate,demo_mode').eq('id', 1).maybeSingle(),
     supabase.from('menu_items').select('day,slot,dish_id').eq('published', true).gte('day', dateKey(addDays(new Date(), -14))),
     supabase.from('service_calls').select('day,dish_id,table_letter,called_at').gte('day', dateKey(addDays(new Date(), -1))),
     supabase.rpc('dish_ratings'),
     supabase.from('dishes').select('id,fr,en,cat,price,emoji,custom,components,allergens,active,image'),
+    supabase.from('offers').select('id,pct,days,fee').order('sort'),
+    supabase.rpc('menu_availability', { p_from: dateKey(addDays(new Date(), -1)), p_to: dateKey(addDays(new Date(), 30)) }),
+    supabase.rpc('dish_thumbs'),
   ]);
   // La liste des plats vient de la base : un plat ajouté par l'admin apparaît chez les élèves.
   if (ds.data && ds.data.length) {
@@ -194,6 +210,15 @@ export async function loadGlobal(): Promise<Record<string, string[]>> {
       d.likes = r?.likes ?? 0;
     });
   }
+  // Nombre exact de 👍 et de 👎 par plat.
+  if (th.data) {
+    const byDish = new Map<string, { up: number; down: number }>(th.data.map((r: any) => [r.dish_id, r]));
+    DISHES.forEach((d) => {
+      const r = byDish.get(d.id);
+      d.up = r?.up ?? 0;
+      d.down = r?.down ?? 0;
+    });
+  }
   const called: Record<string, string[]> = {};
   SERVICE.tables = {};
   (c.data ?? []).forEach((r: any) => {
@@ -205,10 +230,9 @@ export async function loadGlobal(): Promise<Record<string, string[]>> {
     SETTINGS.demo = !!s.data.demo_mode;
     setCreditRule(s.data.max_credit, Number(s.data.credit_fee_rate));
     SETTINGS.cutoff = s.data.cutoff_minutes;
-    PROMO.dishPrice = s.data.promo_dish_price;
-    PROMO.standardPrice = s.data.standard_price;
-    PROMO.fee = s.data.promo_fee;
   }
+  if (of.data && of.data.length) OFFERS.splice(0, OFFERS.length, ...of.data.map((r: any) => ({ id: r.id, pct: r.pct, days: r.days, fee: r.fee })));
+  if (av.data) setAvailability(av.data);
   if (m.data) {
     const rank = (slot: string) => (slot.startsWith('starter') ? 0 : slot.startsWith('dessert') ? 2 : 1);
     const rows = [...m.data].sort((a: any, b: any) => rank(a.slot) - rank(b.slot) || a.slot.localeCompare(b.slot));
@@ -352,14 +376,14 @@ export const useApp = create<State>((set, get) => {
           fetchWallet(s.uid),
           supabase.from('favorites').select('id,dish_id,auto_order,ask').order('created_at', { ascending: true }).order('id', { ascending: true }),
           supabase.from('proposals').select('*').eq('status', 'pending'),
-          supabase.from('subscriptions').select('ends_on').eq('student_id', s.uid).maybeSingle(),
+          supabase.from('subscriptions').select('offer_id,ends_on').eq('student_id', s.uid).maybeSingle(),
           supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(60),
           supabase.from('issues').select('order_id,status'),
         ]);
         set({
           issues: Object.fromEntries((iss.data ?? []).filter((r: any) => r.order_id).map((r: any) => [r.order_id, r.status])),
           notifs: (nf.data ?? []).map(mapNotif),
-          subscriptions: { ...get().subscriptions, [s.uid]: !!sub.data && sub.data.ends_on >= dateKey(new Date()) },
+          subscriptions: { ...get().subscriptions, [s.uid]: activeOffer(sub.data) },
           balance: w.balance,
           debt: w.debt,
           creditCount: w.creditCount,
@@ -376,7 +400,7 @@ export const useApp = create<State>((set, get) => {
         const ids = (links ?? []).map((l: any) => l.student_id);
         const [profs, subs, wallets] = await Promise.all([
           supabase.from('profiles').select('id,full_name,first_name,login').in('id', ids),
-          supabase.from('subscriptions').select('student_id,ends_on').in('student_id', ids),
+          supabase.from('subscriptions').select('student_id,offer_id,ends_on').in('student_id', ids),
           Promise.all(ids.map((id: string) => fetchWallet(id))),
         ]);
         const list: Child[] = (profs.data ?? []).map((p: any) => ({ id: p.id, name: p.full_name, first: p.first_name, matricule: p.login }));
@@ -384,9 +408,8 @@ export const useApp = create<State>((set, get) => {
         CHILDREN.push(...list);
         const siblings: Record<string, Wallet> = {};
         ids.forEach((id: string, i: number) => (siblings[id] = wallets[i]));
-        const today = dateKey(new Date());
-        const subscriptions: Record<string, boolean> = {};
-        (subs.data ?? []).forEach((r: any) => (subscriptions[r.student_id] = r.ends_on >= today));
+        const subscriptions: Record<string, ActiveOffer | undefined> = {};
+        (subs.data ?? []).forEach((r: any) => (subscriptions[r.student_id] = activeOffer(r)));
         const nf = await supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(60);
         set({ notifs: (nf.data ?? []).map(mapNotif), siblings, subscriptions, selectedChild: ids.includes(s.selectedChild) ? s.selectedChild : (ids[0] ?? s.selectedChild) });
       }
@@ -462,9 +485,15 @@ export const useApp = create<State>((set, get) => {
       });
       later(supabase.rpc('demo_topup', { p_student: id, p_amount: amount }));
     },
-    subscribe: (id) => {
-      set((s) => ({ subscriptions: { ...s.subscriptions, [id]: true } }));
-      later(supabase.rpc('demo_subscribe', { p_student: id }));
+    // Une seule offre à la fois : tant que l'offre en cours n'est pas terminée, on ne peut pas en prendre une autre.
+    subscribe: (id, offer) => {
+      if (get().subscriptions[id]) return;
+      const o = OFFERS.find((x) => x.id === offer);
+      if (!o) return;
+      const ends = new Date();
+      ends.setDate(ends.getDate() + o.days - 1);
+      set((s) => ({ subscriptions: { ...s.subscriptions, [id]: { offer: o.id, pct: o.pct, endsOn: dateKey(ends) } } }));
+      later(supabase.rpc('demo_subscribe', { p_student: id, p_offer: offer }));
     },
     setLowThreshold: (n) => {
       const v = Math.max(0, Math.round(n));
@@ -500,24 +529,28 @@ export const useApp = create<State>((set, get) => {
       if (!isOpen(date)) return 'closed';
       if (s.orders.some((o) => o.dishId === dishId && o.date === date)) return 'duplicate';
       if (categoryTaken(s.orders, dishId, date)) return 'category';
+      if (remaining(date, dishId) === 0) return 'soldout';
       const dish = dishById(dishId);
-      const q = simulate(s.balance, s.creditCount, [dish.price])[0];
+      const pct = (s.uid && s.subscriptions[s.uid]?.pct) || 0;
+      const price = discounted(dish.price, pct);
+      const q = simulate(s.balance, s.creditCount, [price])[0];
       if (q.refused) return 'limit';
       const order: Order = {
         id: nextId('o'),
         dishId,
         date,
         removed,
-        price: dish.price,
+        price,
+        listPrice: pct > 0 ? dish.price : undefined,
         fee: q.fee,
         onCredit: q.credit,
         status: 'ordered',
       };
       set({
         orders: [...s.orders, order],
-        txs: [...s.txs, { id: nextId('t'), kind: 'order', dishId, amount: -(dish.price + q.fee), credit: q.credit, at: Date.now() }],
-        balance: q.credit ? s.balance : s.balance - dish.price,
-        debt: q.credit ? s.debt + dish.price + q.fee : s.debt,
+        txs: [...s.txs, { id: nextId('t'), kind: 'order', dishId, amount: -(price + q.fee), listAmount: pct > 0 ? -(dish.price + q.fee) : undefined, credit: q.credit, at: Date.now() }],
+        balance: q.credit ? s.balance : s.balance - price,
+        debt: q.credit ? s.debt + price + q.fee : s.debt,
         creditCount: q.credit ? s.creditCount + 1 : s.creditCount,
       });
       if (s.uid)

@@ -33,6 +33,7 @@ export function PayBox({
   studentId,
   amount,
   purpose = 'topup',
+  offerId,
   onBack,
   onPaid,
   onDemo,
@@ -41,6 +42,7 @@ export function PayBox({
   studentId: string;
   amount: number;
   purpose?: 'topup' | 'subscription';
+  offerId?: string;
   onBack: () => void;
   onPaid: () => void;
   onDemo: () => void;
@@ -54,7 +56,7 @@ export function PayBox({
 
   const pay = async () => {
     setState('waiting');
-    const r = await payWithJeko({ studentId, amount, method, phone: phone.replace(/\s/g, ''), purpose });
+    const r = await payWithJeko({ studentId, amount, method, phone: phone.replace(/\s/g, ''), purpose, offerId });
     if (r === 'success') {
       await refresh();
       onPaid();
@@ -89,7 +91,7 @@ export function PayBox({
           value={phone}
           onChangeText={(v) => setPhone(v.replace(/[^\d+ ]/g, ''))}
           placeholder={t('payPhone')}
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor="#64748B"
           keyboardType="phone-pad"
           inputAccessoryViewID={DONE_BAR_ID}
           onFocus={onFocusField}

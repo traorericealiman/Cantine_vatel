@@ -21,7 +21,7 @@ export default function Profile() {
   const allergySummary = all.length ? all.join(', ') : t('allergySummaryNone');
 
   return (
-    <Screen topPad={10}>
+    <Screen topPad={10} fixedHeader>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <T v="title">{t('profileTitle')}</T>
         <LangPill />

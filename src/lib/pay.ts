@@ -22,9 +22,10 @@ export async function payWithJeko(opts: {
   method: PayMethod;
   phone?: string;
   purpose?: 'topup' | 'subscription';
+  offerId?: string;
 }): Promise<PayOutcome> {
   const { data, error } = await supabase.functions.invoke('create-payment', {
-    body: { student_id: opts.studentId, amount: opts.amount, method: opts.method, phone: opts.phone || undefined, purpose: opts.purpose ?? 'topup' },
+    body: { student_id: opts.studentId, amount: opts.amount, method: opts.method, phone: opts.phone || undefined, purpose: opts.purpose ?? 'topup', offer_id: opts.offerId },
   });
   if (error || !data?.payment_id) return 'error';
   // Wave, Orange et Djamo : on ouvre le lien de l'opérateur ou la page Jèko. MTN et Moov en mode direct : message USSD sur le téléphone.

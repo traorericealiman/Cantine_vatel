@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     const { data: u } = await asUser.auth.getUser();
     if (!u.user) return json({ error: 'unauthorized' }, 401);
 
-    const { student_id, amount, method, phone, purpose = 'topup' } = await req.json();
+    const { student_id, amount, method, phone, purpose = 'topup', offer_id = null } = await req.json();
     if (!METHODS.includes(method)) return json({ error: 'bad_method' }, 400);
     if (!Number.isInteger(amount) || amount < 100 || amount > 1_000_000) return json({ error: 'bad_amount' }, 400);
     if (typeof student_id !== 'string' || !/^[0-9a-f-]{36}$/i.test(student_id)) return json({ error: 'bad_student' }, 400);
@@ -32,10 +32,19 @@ Deno.serve(async (req) => {
     if (!allowed) return json({ error: 'forbidden' }, 403);
 
     const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+    // Abonnement : le prix vient de la base (jamais du téléphone) et une seule offre à la fois.
+    if (purpose === 'subscription') {
+      if (!['week', 'month', 'year'].includes(offer_id)) return json({ error: 'bad_offer' }, 400);
+      const { data: offer } = await admin.from('offers').select('fee').eq('id', offer_id).maybeSingle();
+      if (!offer || offer.fee !== amount) return json({ error: 'bad_amount' }, 400);
+      const { data: free } = await admin.rpc('can_subscribe', { p_student: student_id });
+      if (!free) return json({ error: 'already_subscribed' }, 409);
+    }
     const reference = 'VATEL-' + crypto.randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
     const { data: pay, error: insErr } = await admin
       .from('payments')
-      .insert({ payer_id: u.user.id, student_id, purpose, amount, method, payer_phone: phone ?? null, reference })
+      .insert({ payer_id: u.user.id, student_id, purpose, offer_id: purpose === 'subscription' ? offer_id : null, amount, method, payer_phone: phone ?? null, reference })
       .select()
       .single();
     if (insErr) return json({ error: insErr.message }, 400);

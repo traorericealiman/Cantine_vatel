@@ -51,7 +51,7 @@ export default function Welcome() {
           <T color={colors.white} style={{ fontSize: 46, lineHeight: 50, letterSpacing: -1.2, ...font('700') }}>
             {t('welcomeTitle')}
           </T>
-          <T v="body" color="rgba(255,255,255,0.78)" style={{ marginTop: 14, fontSize: 17, lineHeight: 24 }}>
+          <T v="body" color="rgba(255,255,255,0.88)" style={{ marginTop: 14, fontSize: 17, lineHeight: 24 }}>
             {t('welcomeSub')}
           </T>
         </Reveal>

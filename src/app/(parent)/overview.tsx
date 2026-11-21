@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { ChildPicker } from '../../components/ChildPicker';
 import { Reveal } from '../../components/fx';
 import { BellButton, ProfileButton } from '../../components/notifications';
+import { useOfferName } from '../../components/offers';
 import { WalletCard } from '../../components/WalletCard';
 import { Button, Card, DishTile, LangPill, Screen, Tag, T } from '../../components/ui';
 import { dateKey, dishById } from '../../lib/data';
@@ -57,7 +58,9 @@ export default function ParentHome() {
   const { t } = useI18n();
   const selected = useApp((s) => s.selectedChild);
   const threshold = useApp((s) => s.lowThreshold);
-  const subscribed = useApp((s) => !!s.subscriptions[selected]);
+  const active = useApp((s) => s.subscriptions[selected]);
+  const offerName = useOfferName();
+  const { lang } = useI18n();
   const child = CHILDREN.find((c) => c.id === selected) ?? CHILDREN[0];
   const wallet = useChildWallet(child.id);
   const recharge = () => router.push(`/parent-recharge?child=${child.id}` as any);
@@ -66,7 +69,7 @@ export default function ParentHome() {
   const low = wallet.balance < threshold;
 
   return (
-    <Screen topPad={10}>
+    <Screen topPad={10} fixedHeader>
       <TopRow />
 
       <Reveal delay={30}>
@@ -97,11 +100,14 @@ export default function ParentHome() {
 
       <Reveal delay={170}>
         <Card style={{ marginTop: 14 }}>
-          {subscribed ? (
+          {active ? (
             <>
-              <Tag label={t('pSubscribed')} tone="green" />
+              <Tag label={t('offerRunning')} tone="green" />
               <T v="headline" style={{ marginTop: 10 }}>
-                {t('promoTitle')}
+                {t('pOfferActive', { name: offerName(active.offer), pct: active.pct, date: longDay(active.endsOn, lang) })}
+              </T>
+              <T v="footnote" color={colors.muted} style={{ marginTop: 6 }}>
+                {t('pOfferWait', { date: longDay(active.endsOn, lang) })}
               </T>
             </>
           ) : (

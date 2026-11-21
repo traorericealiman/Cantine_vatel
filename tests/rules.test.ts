@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CREDIT_FEE_RATE, MAX_CREDIT_DISHES } from '../src/lib/data';
+import { CREDIT_FEE_RATE, MAX_CREDIT_DISHES, OFFERS, discounted, remaining, setAvailability } from '../src/lib/data';
 import { allergyHits, categoryTaken, simulate, topup } from '../src/lib/rules';
 import type { Order } from '../src/lib/types';
 
@@ -52,4 +52,21 @@ test('allergies : cases cochées et saisie libre sans accents', () => {
     'fr',
   );
   assert.equal(hits.length, 2, 'le poisson coché + « legumes » saisi ; « le » est trop court');
+});
+
+test('offres : -5 % semaine, -7 % mois, -15 % année sur un plat à 1 000 F', () => {
+  const byId = Object.fromEntries(OFFERS.map((o) => [o.id, o.pct]));
+  assert.deepEqual([byId.week, byId.month, byId.year], [5, 7, 15]);
+  assert.equal(discounted(1000, 5), 950);
+  assert.equal(discounted(1000, 7), 930);
+  assert.equal(discounted(1000, 15), 850);
+  assert.equal(discounted(1000, 0), 1000);
+  assert.equal(discounted(250, 15), 213, 'arrondi comme la base de données');
+});
+
+test('quota : plats restants, complet à zéro, illimité sans quota', () => {
+  setAvailability([{ day: '2026-11-23', dish_id: 'garba', capacity: 15, ordered: 14 }, { day: '2026-11-23', dish_id: 'poulet', capacity: 2, ordered: 5 }]);
+  assert.equal(remaining('2026-11-23', 'garba'), 1);
+  assert.equal(remaining('2026-11-23', 'poulet'), 0, 'jamais négatif');
+  assert.equal(remaining('2026-11-23', 'tcheb'), null, 'pas de quota = illimité');
 });

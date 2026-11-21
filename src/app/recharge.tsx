@@ -3,8 +3,9 @@ import { KeyboardAvoidingView, Pressable, ScrollView, TextInput, View } from 're
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DONE_BAR_ID, DoneBar, PayBox } from '../components/pay';
-import { Button, Card, Chip, Segmented, T, Tag } from '../components/ui';
-import { PROMO } from '../lib/data';
+import { Button, Chip, Segmented, T } from '../components/ui';
+import { OfferId, offerById } from '../lib/data';
+import { OfferPicker, useOfferName } from '../components/offers';
 import { money } from '../lib/i18n';
 import { colors, font, radius, noOutline } from '../lib/theme';
 import { useApp, useI18n } from '../store/app';
@@ -20,18 +21,20 @@ export default function Recharge() {
   const recharge = useApp((s) => s.recharge);
   const subscribe = useApp((s) => s.subscribe);
   const uid = useApp((s) => s.uid);
-  const subscribed = useApp((s) => !!(s.uid && s.subscriptions[s.uid]));
+  const active = useApp((s) => (s.uid ? s.subscriptions[s.uid] : undefined));
   const scroll = useRef<any>(null);
 
+  const [offer, setOffer] = useState<OfferId>('week');
+  const offerName = useOfferName();
   const [mode, setMode] = useState<'free' | 'offer'>('free');
   const [amount, setAmount] = useState(5000);
   const [custom, setCustom] = useState('');
-  const [done, setDone] = useState<{ kind: 'topup' | 'offer'; amount: number } | null>(null);
+  const [done, setDone] = useState<{ kind: 'topup' | 'offer'; amount: number; offer?: OfferId } | null>(null);
   const [confirming, setConfirming] = useState(false);
 
   const value = custom ? parseInt(custom.replace(/\D/g, ''), 10) || 0 : amount;
-  const payable = mode === 'free' ? value : PROMO.fee;
-  const canPay = mode === 'free' ? value >= 500 : !subscribed;
+  const payable = mode === 'free' ? value : offerById(offer).fee;
+  const canPay = mode === 'free' ? value >= 500 : !active;
 
   const startConfirm = () => {
     setConfirming(true);
@@ -45,7 +48,7 @@ export default function Recharge() {
           <View style={{ width: 34, height: 19, borderLeftWidth: 5, borderBottomWidth: 5, borderColor: colors.green, transform: [{ rotate: '-45deg' }, { translateY: -4 }] }} />
         </View>
         <T v="title" align="center">
-          {done.kind === 'topup' ? t('rechargeDone', { amount: money(done.amount) }) : t('pSubscribed')}
+          {done.kind === 'topup' ? t('rechargeDone', { amount: money(done.amount) }) : t('offerDone', { name: offerName(done.offer ?? offer), pct: offerById(done.offer ?? offer).pct })}
         </T>
         <T v="body" color={colors.muted} align="center" style={{ marginTop: 8, marginBottom: 32 }}>
           {t('balance')} · {money(balance)}
@@ -123,7 +126,7 @@ export default function Recharge() {
                   setConfirming(false);
                 }}
                 placeholder={t('otherAmount')}
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#64748B"
                 keyboardType="number-pad"
                 inputAccessoryViewID={DONE_BAR_ID}
                 style={{ flex: 1, paddingVertical: 15, fontSize: 17, color: colors.text, ...font('400'), ...noOutline }}
@@ -143,27 +146,7 @@ export default function Recharge() {
           </View>
         ) : (
           <View style={{ marginTop: 22 }}>
-            <Card>
-              {subscribed ? <Tag label={t('pSubscribed')} tone="green" /> : <Tag label={t('promoTag')} />}
-              <T v="title2" style={{ marginTop: 12 }}>
-                {t('pOfferName')}
-              </T>
-              <T v="callout" color={colors.muted} style={{ marginTop: 6 }}>
-                {t('pOfferBody')}
-              </T>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 16 }}>
-                <T v="title2">{money(PROMO.dishPrice)}</T>
-                <T v="subhead" color={colors.muted} style={{ marginLeft: 8, textDecorationLine: 'line-through' }}>
-                  {money(PROMO.standardPrice)}
-                </T>
-              </View>
-              <T v="subhead" weight="600" style={{ marginTop: 10 }}>
-                {t('pOfferFee', { amount: money(PROMO.fee) })}
-              </T>
-            </Card>
-            <T v="footnote" color={colors.muted} style={{ marginTop: 14, marginLeft: 4 }}>
-              {t('pOfferNote')}
-            </T>
+            <OfferPicker active={active} selected={offer} onSelect={setOffer} />
           </View>
         )}
 
@@ -173,7 +156,7 @@ export default function Recharge() {
 
         {confirming ? (
           <View style={{ marginTop: 22, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.line }}>
-            <T v="title2">{mode === 'free' ? t('confirmTopupTitle') : t('pOfferName')}</T>
+            <T v="title2">{mode === 'free' ? t('confirmTopupTitle') : offerName(offer)}</T>
             <T v="subhead" color={colors.muted} style={{ marginTop: 4, marginBottom: 14 }}>
               {money(payable)}
             </T>
@@ -181,16 +164,17 @@ export default function Recharge() {
               studentId={uid ?? ''}
               amount={payable}
               purpose={mode === 'free' ? 'topup' : 'subscription'}
+              offerId={mode === 'offer' ? offer : undefined}
               onFocusField={() => setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 200)}
               onBack={() => setConfirming(false)}
-              onPaid={() => setDone(mode === 'free' ? { kind: 'topup', amount: value } : { kind: 'offer', amount: PROMO.fee })}
+              onPaid={() => setDone(mode === 'free' ? { kind: 'topup', amount: value } : { kind: 'offer', amount: offerById(offer).fee, offer })}
               onDemo={() => {
                 if (mode === 'free') {
                   recharge(value);
                   setDone({ kind: 'topup', amount: value });
                 } else {
-                  if (uid) subscribe(uid);
-                  setDone({ kind: 'offer', amount: PROMO.fee });
+                  if (uid) subscribe(uid, offer);
+                  setDone({ kind: 'offer', amount: offerById(offer).fee, offer });
                 }
               }}
             />
@@ -213,7 +197,7 @@ export default function Recharge() {
           }}
         >
           <Button
-            label={mode === 'free' ? t('pay', { amount: money(payable) }) : subscribed ? t('pSubscribed') : t('pSubscribe', { amount: money(payable) })}
+            label={mode === 'free' ? t('pay', { amount: money(payable) }) : active ? t('offerRunning') : t('offerChoose', { amount: money(payable) })}
             disabled={!canPay}
             onPress={startConfirm}
           />

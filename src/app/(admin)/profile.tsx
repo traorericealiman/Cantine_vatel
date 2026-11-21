@@ -2,7 +2,7 @@ import { View } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Divider, LangPill, Screen, SettingsGroup as Group, SettingsRow as Row, T } from '../../components/ui';
 import { cutoffLabel } from '../../lib/data';
-import { money } from '../../lib/i18n';
+
 import { colors } from '../../lib/theme';
 import { useAdmin } from '../../store/admin';
 import { useApp, useI18n } from '../../store/app';
@@ -11,7 +11,7 @@ import { useApp, useI18n } from '../../store/app';
 export default function AdminProfile() {
   const { t, lang } = useI18n();
   const cutoff = useAdmin((s) => s.cutoff);
-  const promoPrice = useAdmin((s) => s.promoPrice);
+  const offers = useAdmin((s) => s.offers);
   const stats = useAdmin((s) => s.stats);
   const creditMax = useAdmin((s) => s.creditMax);
   const creditRate = useAdmin((s) => s.creditRate);
@@ -66,7 +66,7 @@ export default function AdminProfile() {
       <Group title={t('aSettings')}>
         <Row label={t('aCutoff')} value={cutoffLabel(lang, cutoff)} onPress={() => router.push('/admin-settings' as any)} />
         <Divider />
-        <Row label={t('aPromoTitle')} value={money(promoPrice)} onPress={() => router.push('/admin-settings' as any)} />
+        <Row label={t('aPromoTitle')} value={offers.map((o) => `${o.pct} %`).join(' · ')} onPress={() => router.push('/admin-settings' as any)} />
         <Divider />
         <Row label={t('aCreditRule')} value={`${creditMax} · +${Math.round(creditRate * 100)} %`} onPress={() => router.push('/admin-settings' as any)} />
         <Divider />

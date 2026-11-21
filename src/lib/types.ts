@@ -8,6 +8,8 @@ export interface Order {
   price: number;
   fee: number;
   onCredit: boolean;
+  /** Prix du catalogue avant réduction (présent seulement si une offre a été appliquée). */
+  listPrice?: number;
   status: 'ordered' | 'received';
   receivedAt?: number;
   syncPending?: boolean;
@@ -21,6 +23,8 @@ export interface Tx {
   dishId?: string;
   amount: number; // + entrée d'argent, - sortie
   credit?: boolean;
+  /** Montant avant réduction d'une offre (négatif pour une commande). */
+  listAmount?: number;
   at: number;
 }
 
@@ -74,4 +78,11 @@ export interface Child {
   name: string;
   first: string;
   matricule: string;
+}
+
+/** Offre promotionnelle en cours pour un élève. */
+export interface ActiveOffer {
+  offer: 'week' | 'month' | 'year';
+  pct: number;
+  endsOn: string;
 }

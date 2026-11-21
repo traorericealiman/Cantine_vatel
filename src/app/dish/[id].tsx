@@ -1,14 +1,47 @@
-import { useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Tap } from '../../components/fx';
 import { HeartIcon } from '../../components/icons';
-import { Button, Card, Check, DishPhoto, T } from '../../components/ui';
-import { dishById, isOpen } from '../../lib/data';
+import { Price, useDiscountPct } from '../../components/price';
+import { Button, Check, DishPhoto, T } from '../../components/ui';
+import { discounted, dishById, isOpen, remaining } from '../../lib/data';
 import { allergenName, cap, compName, dishName, longDay, money } from '../../lib/i18n';
 import { colors, radius, shadow } from '../../lib/theme';
 import { allergyHits, categoryTaken, simulate, useApp, useI18n } from '../../store/app';
+
+/** Section de la fiche : une bande grise la sépare de la précédente, avec un vrai titre. */
+function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  return (
+    <View style={{ borderTopWidth: 10, borderTopColor: colors.brandSoft, paddingHorizontal: 22, paddingTop: 22, paddingBottom: 24 }}>
+      <T v="title2" style={{ fontSize: 21, lineHeight: 27 }}>
+        {title}
+      </T>
+      {hint ? (
+        <T v="callout" color={colors.subtle} style={{ marginTop: 4 }}>
+          {hint}
+        </T>
+      ) : null}
+      <View style={{ marginTop: 14 }}>{children}</View>
+    </View>
+  );
+}
+
+/** Case d'avis : grand chiffre et libellé lisible sur fond teinté. */
+function VoteTile({ icon, n, label, bg, fg }: { icon: string; n: number; label: string; bg: string; fg: string }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: bg, borderRadius: radius.lg, paddingVertical: 16, paddingHorizontal: 16 }}>
+      <T v="title" color={fg}>
+        {icon} {n}
+      </T>
+      <T v="subhead" weight="600" color={colors.subtle} style={{ marginTop: 2 }}>
+        {label}
+      </T>
+    </View>
+  );
+}
 
 export default function DishScreen() {
   const { id, date } = useLocalSearchParams<{ id: string; date?: string }>();
@@ -25,6 +58,13 @@ export default function DishScreen() {
   const addFavorite = useApp((s) => s.addFavorite);
   const removeRule = useApp((s) => s.removeRule);
   const customAllergies = useApp((s) => s.customAllergies);
+  const orderError = useApp((s) => s.orderError);
+  const pct = useDiscountPct();
+  // Les quantités arrivent avec `called` : on se réaffiche dès qu'elles sont reçues.
+  useApp((s) => s.called);
+  const price = discounted(dish.price, pct);
+  const left = date ? remaining(String(date), dish.id) : null;
+  const soldOut = left === 0;
 
   const isTaken = (k: string) => orders.some((o) => o.dishId === dish.id && o.date === k);
   const catFull = (k: string) => categoryTaken(orders, dish.id, k);
@@ -35,10 +75,12 @@ export default function DishScreen() {
   const [removed, setRemoved] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [done, setDone] = useState(false);
+  const [errBefore, setErrBefore] = useState(0);
+  const [refusal, setRefusal] = useState<string | null>(null);
 
   const toggleComp = (cid: string) => setRemoved((r) => (r.includes(cid) ? r.filter((x) => x !== cid) : [...r, cid]));
 
-  const quotes = simulate(balance, creditCount, picked.map(() => dish.price));
+  const quotes = simulate(balance, creditCount, picked.map(() => price));
   const refused = quotes.some((q) => q.refused);
   const fees = quotes.reduce((s, q) => s + q.fee, 0);
   const total = quotes.reduce((s, q) => s + q.price + q.fee, 0);
@@ -48,11 +90,17 @@ export default function DishScreen() {
 
   const submit = () => {
     let ok = 0;
+    let lastResult = 'ok';
+    setErrBefore(orderError?.at ?? 0);
     [...picked].sort().forEach((k) => {
-      if (place(dish.id, k, removed) === 'ok') ok++;
+      lastResult = place(dish.id, k, removed);
+      if (lastResult === 'ok') ok++;
     });
     if (ok > 0) setDone(true);
-    else setConfirming(false);
+    else {
+      setRefusal(lastResult === 'soldout' ? t('soldOutMsg') : null);
+      setConfirming(false);
+    }
   };
 
   if (done) {
@@ -64,16 +112,23 @@ export default function DishScreen() {
         <T v="title" align="center">
           {t('ordered')}
         </T>
-        <T v="body" color={colors.muted} align="center" style={{ marginTop: 8 }}>
+        <T v="body" color={colors.subtle} align="center" style={{ marginTop: 8 }}>
           {dishName(dish, lang)}
         </T>
-        <T v="subhead" color={colors.muted} align="center" style={{ marginTop: 4 }}>
+        <T v="subhead" color={colors.subtle} align="center" style={{ marginTop: 4 }}>
           {picked.map((k) => cap(longDay(k, lang))).join(' · ')}
         </T>
+        {orderError && orderError.at > errBefore && /sold_out/.test(orderError.code) ? (
+          <View style={{ alignSelf: 'stretch', marginTop: 18, padding: 14, borderRadius: 16, backgroundColor: colors.redSoft }}>
+            <T v="subhead" weight="600" color={colors.red}>
+              {t('soldOutMsg')}
+            </T>
+          </View>
+        ) : null}
 
         {removed.length ? (
           <View style={{ alignSelf: 'stretch', marginTop: 18, padding: 14, borderRadius: 16, backgroundColor: colors.brand }}>
-            <T v="footnote" weight="600" color="rgba(255,255,255,0.75)">
+            <T v="footnote" weight="600" color="rgba(255,255,255,0.88)">
               {t('yourDish', { dish: dishName(dish, lang) })}
             </T>
             <T v="title2" color={colors.onBrand} style={{ marginTop: 2, textTransform: 'uppercase' }}>
@@ -90,10 +145,10 @@ export default function DishScreen() {
           <T v="subhead" weight="600">
             {t('balance')} · {money(useApp.getState().balance)}
           </T>
-          <T v="footnote" color={colors.muted} style={{ marginTop: 6 }}>
+          <T v="subhead" weight="600" color={colors.subtle} style={{ marginTop: 6 }}>
             {t('cancelInfo')}
           </T>
-          <T v="footnote" color={colors.muted} style={{ marginTop: 4 }}>
+          <T v="subhead" weight="600" color={colors.subtle} style={{ marginTop: 4 }}>
             {t('confirmInBell')}
           </T>
         </View>
@@ -111,98 +166,127 @@ export default function DishScreen() {
     );
   }
 
-  const description = dish.components.map((c) => compName(c, lang).toLowerCase()).join(', ');
+  const up = dish.up ?? Math.round((dish.votes * dish.likes) / 100);
+  const down = dish.down ?? Math.max(0, dish.votes - up);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 16, paddingBottom: 220 }} showsVerticalScrollIndicator={false}>
-        {/* barre du haut : retour rond + titre */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-          <Tap
-            onPress={() => router.dismiss()}
-            scale={0.9}
-            style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <T color={colors.text} style={{ fontSize: 28, lineHeight: 30, marginTop: -3 }}>
-              ‹
-            </T>
-          </Tap>
-          <T v="headline">{t('dishDetail')}</T>
-          <Tap
-            onPress={() => (favorite ? removeRule(favorite.id) : addFavorite(dish.id))}
-            scale={0.9}
-            style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: favorite ? colors.redSoft : colors.card, borderWidth: 1, borderColor: favorite ? colors.redSoft : colors.line, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <HeartIcon filled={!!favorite} size={22} color={favorite ? colors.red : colors.text} />
-          </Tap>
-        </View>
-
-        <DishPhoto id={dish.id} emoji={dish.emoji} height={230} radius={radius.xl} emojiSize={110} />
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, gap: 14 }}>
-          {dish.votes ? (
-            <>
-              <T v="subhead" weight="600" color={colors.green}>
-                {t('likes', { n: dish.likes })}
+      <ScrollView contentContainerStyle={{ paddingBottom: 220 }} showsVerticalScrollIndicator={false}>
+        {/* Grande photo bord à bord, avec le retour et le cœur posés dessus */}
+        <View>
+          <DishPhoto id={dish.id} emoji={dish.emoji} height={390} radius={0} emojiSize={110} />
+          <LinearGradient pointerEvents="none" colors={['rgba(11,18,34,0.5)', 'rgba(11,18,34,0)']} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 130 }} />
+          <View style={{ position: 'absolute', top: insets.top + 14, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Tap
+              onPress={() => router.dismiss()}
+              scale={0.9}
+              style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', ...shadow }}
+            >
+              <T color={colors.text} style={{ fontSize: 28, lineHeight: 30, marginTop: -3 }}>
+                ‹
               </T>
-              <T v="subhead" color={colors.muted}>
-                {t('reviews', { n: dish.votes })}
-              </T>
-            </>
-          ) : null}
-        </View>
-
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: 8 }}>
-          <T v="title" style={{ flex: 1, paddingRight: 12 }}>
-            {dishName(dish, lang)}
-          </T>
-          <T v="title2" color={colors.brandText}>
-            {money(dish.price)}
-          </T>
-        </View>
-        <T v="callout" color={colors.muted} style={{ marginTop: 6 }}>
-          {cap(description)}.
-        </T>
-        {date ? (
-          <T v="subhead" weight="600" color={colors.brandText} style={{ marginTop: 10 }}>
-            {cap(longDay(date, lang))}
-          </T>
-        ) : null}
-
-        {conflict.length ? (
-          <View style={{ backgroundColor: colors.redSoft, borderRadius: radius.md, padding: 14, marginTop: 16 }}>
-            <T v="subhead" weight="600" color={colors.red}>
-              {t('allergyWarn', { list: conflict.join(', ') })}
-            </T>
+            </Tap>
+            <Tap
+              onPress={() => (favorite ? removeRule(favorite.id) : addFavorite(dish.id))}
+              scale={0.86}
+              style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: favorite ? colors.redSoft : colors.card, alignItems: 'center', justifyContent: 'center', ...shadow }}
+            >
+              <HeartIcon filled={!!favorite} size={22} color={favorite ? colors.red : colors.text} />
+            </Tap>
           </View>
-        ) : null}
+        </View>
 
-        <Card style={{ marginTop: 20 }}>
-          <T v="headline">{dish.custom ? t('customize') : t('composition')}</T>
-          {dish.custom ? (
-            <T v="footnote" color={colors.muted} style={{ marginBottom: 4 }}>
-              {t('customizeHint')}
-            </T>
-          ) : null}
-          <View style={{ marginTop: 6 }}>
-            {dish.components.map((c) =>
-              c.removable ? (
-                <Check key={c.id} label={compName(c, lang)} checked={!removed.includes(c.id)} onPress={() => toggleComp(c.id)} />
-              ) : (
-                <View key={c.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }}>
-                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.brand, marginHorizontal: 10, marginRight: 24 }} />
-                  <T v="body">{compName(c, lang)}</T>
+        {/* Le contenu remonte sur la photo comme une feuille */}
+        <View style={{ marginTop: -34, paddingTop: 12, borderTopLeftRadius: 34, borderTopRightRadius: 34, backgroundColor: colors.bg }}>
+          <View style={{ alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: '#CBD5E1', marginBottom: 16 }} />
+
+          {/* Essentiel : nom, jour, prix, disponibilité */}
+          <View style={{ paddingHorizontal: 22, paddingBottom: 24 }}>
+            <T v="title">{dishName(dish, lang)}</T>
+            {date ? (
+              <T v="callout" weight="600" color={colors.subtle} style={{ marginTop: 4 }}>
+                {cap(longDay(date, lang))}
+              </T>
+            ) : null}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
+              <Price amount={price} list={pct > 0 ? dish.price : undefined} v="title2" color={pct > 0 ? colors.green : colors.brandText} strikeColor={colors.subtle} />
+              {left !== null ? (
+                <View style={{ backgroundColor: soldOut ? colors.redSoft : left <= 3 ? colors.warmSoft : colors.brandSoft, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 7 }}>
+                  <T v="subhead" weight="700" color={soldOut ? colors.red : left <= 3 ? colors.warm : colors.text}>
+                    {soldOut ? t('soldOut') : t(left === 1 ? 'availableOne' : 'availableMany', { n: left })}
+                  </T>
                 </View>
-              ),
-            )}
+              ) : null}
+            </View>
+            {pct > 0 ? (
+              <View style={{ alignSelf: 'flex-start', backgroundColor: colors.greenSoft, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 7, marginTop: 12 }}>
+                <T v="subhead" weight="700" color={colors.green}>
+                  {t('offerReduced', { pct })}
+                </T>
+              </View>
+            ) : null}
+            {conflict.length ? (
+              <View style={{ backgroundColor: colors.redSoft, borderRadius: radius.md, padding: 14, marginTop: 16 }}>
+                <T v="callout" weight="600" color={colors.red}>
+                  {t('allergyWarn', { list: conflict.join(', ') })}
+                </T>
+              </View>
+            ) : null}
           </View>
-          {dish.allergens.length ? (
-            <T v="footnote" color={colors.muted} style={{ marginTop: 8 }}>
-              {t('allergensTitle')} : {dish.allergens.map((a) => allergenName(a, lang)).join(', ')}
-            </T>
-          ) : null}
-        </Card>
 
+          <Section title={t('detailReviews')}>
+            {up + down > 0 ? (
+              <>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <VoteTile icon="👍" n={up} label={t('detailLiked')} bg={colors.greenSoft} fg={colors.green} />
+                  <VoteTile icon="👎" n={down} label={t('detailDisliked')} bg={colors.redSoft} fg={colors.red} />
+                </View>
+                <View style={{ flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: colors.brandSoft, marginTop: 14 }}>
+                  <View style={{ flex: up, backgroundColor: colors.green }} />
+                  <View style={{ flex: down, backgroundColor: colors.red }} />
+                </View>
+                <T v="subhead" weight="600" color={colors.subtle} style={{ marginTop: 8 }}>
+                  {t('likes', { n: Math.round((100 * up) / (up + down)) })} · {t('reviews', { n: up + down })}
+                </T>
+              </>
+            ) : (
+              <T v="callout" color={colors.subtle}>
+                {t('newDishHint')}
+              </T>
+            )}
+          </Section>
+
+          <Section title={dish.custom ? t('customize') : t('composition')} hint={dish.custom ? t('customizeHint') : undefined}>
+            {dish.components.map((c, i) => (
+              <View key={c.id} style={{ borderTopWidth: i ? 1 : 0, borderTopColor: colors.line }}>
+                {c.removable ? (
+                  <Check label={compName(c, lang)} checked={!removed.includes(c.id)} onPress={() => toggleComp(c.id)} />
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }}>
+                    <View style={{ width: 26, alignItems: 'center', marginRight: 14 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.brand }} />
+                    </View>
+                    <T v="body">{compName(c, lang)}</T>
+                  </View>
+                )}
+              </View>
+            ))}
+          </Section>
+
+          {dish.allergens.length ? (
+            <Section title={t('allergensTitle')}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {dish.allergens.map((a) => (
+                  <View key={a} style={{ backgroundColor: colors.warmSoft, borderRadius: radius.pill, paddingHorizontal: 14, paddingVertical: 8 }}>
+                    <T v="subhead" weight="700" color={colors.warm}>
+                      {allergenName(a, lang)}
+                    </T>
+                  </View>
+                ))}
+              </View>
+            </Section>
+          ) : null}
+        </View>
       </ScrollView>
 
       {/* barre du bas : total + bouton, puis confirmation avant le débit */}
@@ -224,19 +308,19 @@ export default function DishScreen() {
         {confirming ? (
           <>
             <T v="title2">{t('confirmOrderTitle')}</T>
-            <T v="subhead" color={colors.muted} style={{ marginTop: 4 }}>
+            <T v="subhead" color={colors.subtle} style={{ marginTop: 4 }}>
               {t('confirmOrderSub')}
             </T>
             <View style={{ marginTop: 14, gap: 6 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <T v="body" color={colors.muted}>
+                <T v="body" color={colors.subtle}>
                   {t('total')}
                 </T>
-                <T v="headline">{money(total)}</T>
+                <Price amount={total} list={pct > 0 ? total + (dish.price - price) * picked.length : undefined} />
               </View>
               {!anyCredit ? (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <T v="body" color={colors.muted}>
+                  <T v="body" color={colors.subtle}>
                     {t('balanceAfter', { amount: '' }).replace(/\s*:\s*$/, '')}
                   </T>
                   <T v="headline">{money(after)}</T>
@@ -262,17 +346,22 @@ export default function DishScreen() {
                 {t('creditLimit')}
               </T>
             ) : null}
+            {soldOut || refusal ? (
+              <T v="subhead" color={colors.red} weight="500" style={{ marginBottom: 10 }}>
+                {t('soldOutMsg')}
+              </T>
+            ) : null}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
               <View>
-                <T v="footnote" color={colors.muted}>
+                <T v="subhead" weight="600" color={colors.subtle}>
                   {t('total')}
                 </T>
-                <T v="title2">{money(total)}</T>
+                <Price amount={total} list={pct > 0 ? total + (dish.price - price) * picked.length : undefined} v="title2" />
               </View>
               <Button
                 label={conflict.length ? t('orderBtn') + ' · ' + t('allergensTitle') : t('orderBtn')}
                 style={{ flex: 1 }}
-                disabled={picked.length === 0 || refused}
+                disabled={picked.length === 0 || refused || soldOut}
                 onPress={() => setConfirming(true)}
               />
             </View>

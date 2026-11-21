@@ -1,9 +1,9 @@
-import { Pressable, Switch, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Reveal, Tap } from '../../components/fx';
 import { HeartIcon, TrashIcon } from '../../components/icons';
-import { Card, DishPhoto, DishTile, LangPill, Screen, T } from '../../components/ui';
+import { Card, DishPhoto, DishTile, LangPill, Screen, Segmented, T } from '../../components/ui';
 import { DISHES, daysServing, dishById, isOpen } from '../../lib/data';
 import { dishName, money } from '../../lib/i18n';
 import { colors, radius } from '../../lib/theme';
@@ -27,7 +27,7 @@ export default function Favorites() {
   };
 
   return (
-    <Screen topPad={10}>
+    <Screen topPad={10} fixedHeader>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
         <T v="title">{t('tabFavorites')}</T>
         <LangPill />
@@ -65,32 +65,39 @@ export default function Favorites() {
           {rules.map((r, i) => {
             const dish = dishById(r.dishId);
             return (
-              <View key={r.id} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 14, borderTopWidth: i ? 1 : 0, borderTopColor: colors.line }}>
-                <Pressable onPress={() => openDish(dish.id)}>
-                  <DishTile emoji={dish.emoji} id={dish.id} size={56} />
-                </Pressable>
-                <View style={{ flex: 1, marginHorizontal: 14 }}>
-                  <T v="headline" numberOfLines={1}>
-                    {dishName(dish, lang)}
-                  </T>
-                  <T v="footnote" color={r.ask ? colors.green : colors.muted} weight="600" style={{ marginTop: 2 }}>
-                    {r.ask ? t('favStateAsk') : t('favOff')}
-                  </T>
+              <View key={r.id} style={{ paddingHorizontal: 14, paddingVertical: 14, borderTopWidth: i ? 1 : 0, borderTopColor: colors.line }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Pressable onPress={() => openDish(dish.id)}>
+                    <DishTile emoji={dish.emoji} id={dish.id} size={56} />
+                  </Pressable>
+                  <View style={{ flex: 1, marginHorizontal: 14 }}>
+                    <T v="headline" numberOfLines={1}>
+                      {dishName(dish, lang)}
+                    </T>
+                    <T v="footnote" color={r.ask || r.active ? colors.green : colors.muted} weight="600" style={{ marginTop: 2 }}>
+                      {r.active ? t('favStateAuto') : r.ask ? t('favStateAsk') : t('favOff')}
+                    </T>
+                  </View>
+                  <Pressable
+                    onPress={() => remove(r.id)}
+                    accessibilityLabel={t('favRemove')}
+                    hitSlop={8}
+                    style={({ pressed }) => ({ width: 40, height: 40, marginLeft: 8, borderRadius: 20, backgroundColor: colors.redSoft, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}
+                  >
+                    <TrashIcon size={19} />
+                  </Pressable>
                 </View>
-                <View style={{ alignItems: 'center' }}>
-                  <Switch value={r.ask} onValueChange={(v) => setMode(r.id, v ? 'ask' : 'off')} trackColor={{ true: colors.brand, false: '#CBD5E1' }} thumbColor={colors.white} />
-                  <T v="caption" color={colors.muted} style={{ marginTop: 4 }}>
-                    {t('favModeAsk')}
-                  </T>
+                <View style={{ marginTop: 12 }}>
+                  <Segmented
+                    value={r.active ? 'auto' : r.ask ? 'ask' : 'off'}
+                    onChange={(m) => setMode(r.id, m)}
+                    options={[
+                      { key: 'off', label: t('favModeOff') },
+                      { key: 'ask', label: t('favModeAsk') },
+                      { key: 'auto', label: t('favModeAuto') },
+                    ]}
+                  />
                 </View>
-                <Pressable
-                  onPress={() => remove(r.id)}
-                  accessibilityLabel={t('favRemove')}
-                  hitSlop={8}
-                  style={({ pressed }) => ({ width: 40, height: 40, marginLeft: 8, borderRadius: 20, backgroundColor: colors.redSoft, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1 })}
-                >
-                  <TrashIcon size={19} />
-                </Pressable>
               </View>
             );
           })}

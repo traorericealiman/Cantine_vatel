@@ -171,7 +171,7 @@ export function ProposalButtons({ id }: { id: string }) {
   const [asked, setAsked] = useState(0);
 
   const explain = (code: string) =>
-    /closed/.test(code) ? t('closed') : /category/.test(code) ? t('categoryTaken') : /credit/.test(code) ? t('creditLimit') : /menu/.test(code) ? t('notOnMenu') : t('orderFailed');
+    /sold_out/.test(code) ? t('soldOutMsg') : /closed/.test(code) ? t('closed') : /category/.test(code) ? t('categoryTaken') : /credit/.test(code) ? t('creditLimit') : /menu/.test(code) ? t('notOnMenu') : t('orderFailed');
 
   // Refus décidé par le serveur juste après notre « Oui » : déduit pendant le rendu, sans effet.
   const serverWhy = asked && orderError && orderError.at >= asked ? explain(orderError.code) : null;
@@ -183,6 +183,7 @@ export function ProposalButtons({ id }: { id: string }) {
     if (r === 'closed') setWhy(t('closed'));
     else if (r === 'category') setWhy(t('categoryTaken'));
     else if (r === 'limit') setWhy(t('creditLimit'));
+    else if (r === 'soldout') setWhy(t('soldOutMsg'));
     else if (r === 'gone') setWhy(t('proposalGone'));
   };
 

@@ -139,7 +139,7 @@ export default function Dashboard() {
       <div className="grid k2">
         <div className="card">
           <strong>Recettes et dépenses</strong>
-          <div style={{ height: 280, marginTop: 12 }}>
+          <div className="chart">
             <ResponsiveContainer>
               <BarChart data={chart}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -155,7 +155,7 @@ export default function Dashboard() {
         </div>
         <div className="card">
           <strong>Plats vendus</strong>
-          <div style={{ height: 280, marginTop: 12 }}>
+          <div className="chart">
             <ResponsiveContainer>
               <BarChart data={chart}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -177,7 +177,7 @@ export default function Dashboard() {
         <Kpi label="Achats de la semaine" value={money(weekSpent)} detail="Dépenses d’approvisionnement" />
       </div>
       {low.length ? (
-        <div className="card" style={{ marginTop: 14 }}>
+        <div className="card scroll" style={{ marginTop: 14 }}>
           <strong>Ingrédients sous le seuil</strong>
           <table style={{ marginTop: 8 }}>
             <thead>

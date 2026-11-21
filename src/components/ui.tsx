@@ -1,5 +1,6 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import {
+  Animated,
   Image,
   KeyboardAvoidingView,
   Pressable,
@@ -13,6 +14,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, font, radius, shadow, variants, Variant, noOutline } from '../lib/theme';
 import { useApp, useI18n } from '../store/app';
@@ -75,8 +77,10 @@ export function KeyboardRoot({ children, background = colors.bg }: { children: R
   );
 }
 
-export function Screen({ children, scroll = true, bottomPad = 130, topPad = 8, background = colors.bg, style, backdrop = true }: ScreenProps & { backdrop?: boolean }) {
+/** `fixedHeader` : le premier enfant reste fixé en haut de l'écran, seul le reste défile. */
+export function Screen({ children, scroll = true, bottomPad = 130, topPad = 8, background = colors.bg, style, backdrop = true, fixedHeader = false }: ScreenProps & { backdrop?: boolean; fixedHeader?: boolean }) {
   const insets = useSafeAreaInsets();
+  const parts = fixedHeader ? React.Children.toArray(children) : null;
   if (!scroll) {
     return (
       <View style={{ flex: 1, backgroundColor: background }}>
@@ -88,14 +92,25 @@ export function Screen({ children, scroll = true, bottomPad = 130, topPad = 8, b
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: background }} behavior="padding">
       {backdrop ? <Backdrop /> : null}
+      {parts ? (
+        <View style={{ paddingTop: insets.top + topPad, paddingHorizontal: 20, zIndex: 2 }}>
+          {parts[0]}
+          {/* Le contenu se fond sous l'entête au lieu d'être coupé net. */}
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(255,255,255,1)', 'rgba(255,255,255,0)']}
+            style={{ position: 'absolute', left: 0, right: 0, bottom: -18, height: 18 }}
+          />
+        </View>
+      ) : null}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[{ paddingTop: insets.top + topPad, paddingBottom: bottomPad, paddingHorizontal: 20 }, style]}
+        contentContainerStyle={[{ paddingTop: parts ? 0 : insets.top + topPad, paddingBottom: bottomPad, paddingHorizontal: 20 }, style]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
-        {children}
+        {parts ? parts.slice(1) : children}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -110,11 +125,9 @@ export function LangPill() {
     <View
       style={{
         flexDirection: 'row',
-        backgroundColor: colors.card,
+        backgroundColor: colors.brandSoft,
         borderRadius: radius.pill,
         padding: 3,
-        borderWidth: 1,
-        borderColor: colors.line,
       }}
     >
       {(['fr', 'en'] as const).map((l) => {
@@ -219,14 +232,14 @@ export function Button({ label, onPress, kind = 'primary', disabled, small, styl
       style={[
         {
           backgroundColor: p.bg,
-          borderRadius: small ? 12 : 16,
-          paddingVertical: small ? 10 : 17,
+          borderRadius: small ? 14 : 20,
+          paddingVertical: small ? 11 : 18,
           paddingHorizontal: small ? 16 : 24,
           alignItems: 'center',
           justifyContent: 'center',
           opacity: disabled ? 0.4 : 1,
           ...(kind === 'primary' && !disabled
-            ? { shadowColor: colors.brand, shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 }
+            ? { shadowColor: colors.brand, shadowOpacity: 0.3, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 6 }
             : {}),
         },
         style,
@@ -259,10 +272,10 @@ export function Field({ label, secure, style, ...rest }: FieldProps) {
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: colors.card,
+          backgroundColor: focus ? colors.card : colors.brandSoft,
           borderRadius: radius.md,
           borderWidth: 1.5,
-          borderColor: focus ? colors.brand : colors.line,
+          borderColor: focus ? colors.brand : colors.brandSoft,
           paddingHorizontal: 16,
         }}
       >
@@ -277,7 +290,7 @@ export function Field({ label, secure, style, ...rest }: FieldProps) {
             setFocus(false);
             rest.onBlur?.(e);
           }}
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor="#64748B"
           style={[
             {
               flex: 1,
@@ -345,9 +358,22 @@ export function Segmented<K extends string>({
   value: K;
   onChange: (k: K) => void;
 }) {
-  // Contraste net : l'onglet actif est plein bleu avec texte blanc, les autres sont blancs avec texte noir.
+  // Contraste net : une pastille bleu nuit glisse sous l'onglet actif, texte blanc dessus.
+  const index = Math.max(0, options.findIndex((o) => o.key === value));
+  const [slide] = useState(() => new Animated.Value(index));
+  const [width, setWidth] = useState(0);
+  const segment = width / Math.max(1, options.length);
+  useEffect(() => {
+    Animated.spring(slide, { toValue: index, speed: 18, bounciness: 5, useNativeDriver: true }).start();
+  }, [slide, index]);
+  const translateX = options.length > 1 ? slide.interpolate({ inputRange: [0, options.length - 1], outputRange: [0, segment * (options.length - 1)] }) : 0;
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: colors.card, borderRadius: radius.pill, padding: 4, borderWidth: 1, borderColor: colors.line }}>
+    <View style={{ flexDirection: 'row', backgroundColor: colors.brandSoft, borderRadius: radius.pill, padding: 4 }}>
+      <View pointerEvents="none" onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={{ position: 'absolute', top: 4, bottom: 4, left: 4, right: 4 }}>
+        {width > 0 ? (
+          <Animated.View style={{ width: segment, height: '100%', borderRadius: radius.pill, backgroundColor: colors.brand, transform: [{ translateX }] }} />
+        ) : null}
+      </View>
       {options.map((o) => {
         const on = o.key === value;
         return (
@@ -359,10 +385,9 @@ export function Segmented<K extends string>({
               paddingVertical: 11,
               borderRadius: radius.pill,
               alignItems: 'center',
-              backgroundColor: on ? colors.brand : colors.card,
             }}
           >
-            <T v="subhead" weight="600" color={on ? colors.onBrand : colors.text}>
+            <T v="subhead" weight="600" numberOfLines={1} color={on ? colors.onBrand : colors.text}>
               {o.label}
             </T>
           </Pressable>
@@ -536,7 +561,7 @@ export function SettingsRow({ label, value, onPress }: { label: string; value?: 
           {value}
         </T>
       ) : null}
-      <T v="title2" color="#CBD5E1">
+      <T v="title2" color="#64748B">
         ›
       </T>
     </Pressable>

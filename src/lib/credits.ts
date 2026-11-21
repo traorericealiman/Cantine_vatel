@@ -2,6 +2,13 @@ export interface PhotoCredit { dishId: string; title: string; author: string; li
 
 export const PHOTO_CREDITS: PhotoCredit[] = [
   {
+    "dishId": "kedjenou",
+    "title": "Chicken curry in a white bowl with sauce (photo d'illustration)",
+    "author": "Kalindu Waranga",
+    "license": "Unsplash License",
+    "url": "https://unsplash.com/photos/VtNLbOAeO68"
+  },
+  {
     "dishId": "garba",
     "title": "Le Garba.jpg",
     "author": "Didierwiki",

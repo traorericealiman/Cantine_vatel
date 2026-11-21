@@ -41,12 +41,9 @@ Deno.serve(async (req) => {
   if (!pay) return new Response('already handled');
 
   if (pay.purpose === 'subscription') {
-    await admin.from('subscriptions').upsert({
-      student_id: pay.student_id,
-      starts_on: new Date().toISOString().slice(0, 10),
-      ends_on: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
-      payment_id: pay.id,
-    });
+    // Une seule offre à la fois : si une offre était déjà en cours (deux paiements simultanés), le montant est rendu en crédits.
+    const { error } = await admin.rpc('activate_offer', { p_student: pay.student_id, p_offer: pay.offer_id, p_payment: pay.id });
+    if (error) await admin.rpc('credit_wallet', { p_student: pay.student_id, p_amount: pay.amount, p_payment: pay.id });
   } else {
     await admin.rpc('credit_wallet', { p_student: pay.student_id, p_amount: pay.amount, p_payment: pay.id });
   }

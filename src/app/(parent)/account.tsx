@@ -18,7 +18,7 @@ export default function ParentAccount() {
     .slice(0, 2);
 
   return (
-    <Screen topPad={10}>
+    <Screen topPad={10} fixedHeader>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <T v="title">{t('profileTitle')}</T>
         <LangPill />

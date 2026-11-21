@@ -3,8 +3,9 @@ import { KeyboardAvoidingView, Pressable, ScrollView, TextInput, View } from 're
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DONE_BAR_ID, DoneBar, PayBox } from '../components/pay';
-import { Button, Card, Chip, Segmented, Tag, T } from '../components/ui';
-import { PROMO } from '../lib/data';
+import { Button, Chip, Segmented, T } from '../components/ui';
+import { OfferId, offerById } from '../lib/data';
+import { OfferPicker, useOfferName } from '../components/offers';
 import { money } from '../lib/i18n';
 import { colors, font, noOutline, radius } from '../lib/theme';
 import { CHILDREN, useApp, useChildWallet, useI18n } from '../store/app';
@@ -19,20 +20,22 @@ export default function ParentRecharge() {
   const selected = useApp((s) => s.selectedChild);
   const child = CHILDREN.find((c) => c.id === (params.child ?? selected)) ?? CHILDREN[0];
   const wallet = useChildWallet(child.id);
-  const subscribed = useApp((s) => !!s.subscriptions[child.id]);
+  const active = useApp((s) => s.subscriptions[child.id]);
   const rechargeChild = useApp((s) => s.rechargeChild);
   const subscribe = useApp((s) => s.subscribe);
 
   const scroll = useRef<any>(null);
+  const [offer, setOffer] = useState<OfferId>('week');
+  const offerName = useOfferName();
   const [mode, setMode] = useState<'free' | 'offer'>(params.tab === 'offer' ? 'offer' : 'free');
   const [amount, setAmount] = useState(5000);
   const [custom, setCustom] = useState('');
   const [confirming, setConfirming] = useState(false);
-  const [done, setDone] = useState<{ kind: 'topup' | 'offer'; amount: number } | null>(null);
+  const [done, setDone] = useState<{ kind: 'topup' | 'offer'; amount: number; offer?: OfferId } | null>(null);
 
   const value = custom ? parseInt(custom.replace(/\D/g, ''), 10) || 0 : amount;
-  const payable = mode === 'free' ? value : PROMO.fee;
-  const canPay = mode === 'free' ? value >= 500 : !subscribed;
+  const payable = mode === 'free' ? value : offerById(offer).fee;
+  const canPay = mode === 'free' ? value >= 500 : !active;
 
   if (done) {
     return (
@@ -43,7 +46,7 @@ export default function ParentRecharge() {
         <T v="title" align="center">
           {done.kind === 'topup'
             ? t('pRechargeDone', { name: child.first, amount: money(done.amount) })
-            : t('pSubscribedDone', { name: child.first })}
+            : t('offerDone', { name: offerName(done.offer ?? offer), pct: offerById(done.offer ?? offer).pct })}
         </T>
         <T v="body" color={colors.muted} align="center" style={{ marginTop: 8, marginBottom: 32 }}>
           {t('balance')} · {money(wallet.balance)}
@@ -118,7 +121,7 @@ export default function ParentRecharge() {
                   setConfirming(false);
                 }}
                 placeholder={t('otherAmount')}
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#64748B"
                 keyboardType="number-pad"
                 inputAccessoryViewID={DONE_BAR_ID}
                 style={{ flex: 1, paddingVertical: 15, fontSize: 17, color: colors.text, ...font('400'), ...noOutline }}
@@ -142,27 +145,7 @@ export default function ParentRecharge() {
           </View>
         ) : (
           <View style={{ marginTop: 22 }}>
-            <Card>
-              {subscribed ? <Tag label={t('pSubscribed')} tone="green" /> : <Tag label={t('promoTag')} />}
-              <T v="title2" style={{ marginTop: 12 }}>
-                {t('pOfferName')}
-              </T>
-              <T v="callout" color={colors.muted} style={{ marginTop: 6 }}>
-                {t('pOfferBody')}
-              </T>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 16 }}>
-                <T v="title2">{money(PROMO.dishPrice)}</T>
-                <T v="subhead" color={colors.muted} style={{ marginLeft: 8, textDecorationLine: 'line-through' }}>
-                  {money(PROMO.standardPrice)}
-                </T>
-              </View>
-              <T v="subhead" weight="600" style={{ marginTop: 10 }}>
-                {t('pOfferFee', { amount: money(PROMO.fee) })}
-              </T>
-            </Card>
-            <T v="footnote" color={colors.muted} style={{ marginTop: 14, marginLeft: 4 }}>
-              {t('pOfferNote')}
-            </T>
+            <OfferPicker active={active} selected={offer} onSelect={setOffer} parent />
             <T v="footnote" color={colors.muted} style={{ marginTop: 10, marginLeft: 4 }}>
               {t('paySoon')}
             </T>
@@ -170,7 +153,7 @@ export default function ParentRecharge() {
         )}
         {confirming ? (
           <View style={{ marginTop: 22, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.line }}>
-            <T v="title2">{t('confirmTopupTitle')}</T>
+            <T v="title2">{mode === 'free' ? t('confirmTopupTitle') : offerName(offer)}</T>
             <T v="subhead" color={colors.muted} style={{ marginTop: 4, marginBottom: 14 }}>
               {mode === 'free'
                 ? t('pConfirmTopupSub', { amount: money(payable), name: child.first })
@@ -180,16 +163,17 @@ export default function ParentRecharge() {
               studentId={child.id}
               amount={payable}
               purpose={mode === 'free' ? 'topup' : 'subscription'}
+              offerId={mode === 'offer' ? offer : undefined}
               onFocusField={() => setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 200)}
               onBack={() => setConfirming(false)}
-              onPaid={() => setDone(mode === 'free' ? { kind: 'topup', amount: value } : { kind: 'offer', amount: PROMO.fee })}
+              onPaid={() => setDone(mode === 'free' ? { kind: 'topup', amount: value } : { kind: 'offer', amount: offerById(offer).fee, offer })}
               onDemo={() => {
                 if (mode === 'free') {
                   rechargeChild(child.id, value);
                   setDone({ kind: 'topup', amount: value });
                 } else {
-                  subscribe(child.id);
-                  setDone({ kind: 'offer', amount: PROMO.fee });
+                  subscribe(child.id, offer);
+                  setDone({ kind: 'offer', amount: offerById(offer).fee, offer });
                 }
               }}
             />
@@ -212,7 +196,7 @@ export default function ParentRecharge() {
           }}
         >
           <Button
-            label={mode === 'free' ? t('pay', { amount: money(payable) }) : subscribed ? t('pSubscribed') : t('pSubscribe', { amount: money(payable) })}
+            label={mode === 'free' ? t('pay', { amount: money(payable) }) : active ? t('offerRunning') : t('offerChoose', { amount: money(payable) })}
             disabled={!canPay}
             onPress={() => {
               setConfirming(true);

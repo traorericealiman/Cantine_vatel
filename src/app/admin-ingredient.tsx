@@ -123,7 +123,7 @@ export default function AdminIngredient() {
                 value={recipe[d.id]}
                 onChangeText={(v) => setRecipe((r) => ({ ...r, [d.id]: decimal(v) }))}
                 placeholder="0.15"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor="#64748B"
                 keyboardType="decimal-pad"
                 inputAccessoryViewID={DONE_BAR_ID}
                 style={{ width: 80, paddingVertical: 12, textAlign: 'right', fontSize: 16, color: colors.text, ...font('500'), ...noOutline }}

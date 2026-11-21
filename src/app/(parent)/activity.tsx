@@ -61,7 +61,7 @@ export default function ParentActivity() {
   const txs = [...wallet.txs].sort((a, b) => b.at - a.at);
 
   return (
-    <Screen topPad={10}>
+    <Screen topPad={10} fixedHeader>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
         <T v="title" numberOfLines={1} style={{ flex: 1, paddingRight: 12 }}>
           {t('tabActivity')}

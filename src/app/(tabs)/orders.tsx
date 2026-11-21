@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
+import { Price } from '../../components/price';
 import { Button, DishTile, LangPill, Screen, Segmented, T } from '../../components/ui';
 import { dateKey, dishById, isOpen, serviceFor } from '../../lib/data';
-import { cap, compName, dishName, longDay, money } from '../../lib/i18n';
-import { colors, font, noOutline, radius } from '../../lib/theme';
+import { cap, compName, dishName, longDay } from '../../lib/i18n';
+import { colors, font, noOutline, radius, shadow } from '../../lib/theme';
 import { Order, useApp, useI18n } from '../../store/app';
 
 /** Disponibilité du plat : « non disponible » tant que l'admin ne l'a pas appelé, puis « disponible » (avec la table si besoin). */
@@ -89,7 +90,7 @@ function Rating({ order }: { order: Order }) {
             value={text}
             onChangeText={setText}
             placeholder={t('comment')}
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor="#64748B"
             multiline
             style={{ backgroundColor: colors.bg, borderRadius: radius.md, padding: 14, minHeight: 48, fontSize: 16, color: colors.text, ...font('400'), ...noOutline }}
           />
@@ -133,15 +134,7 @@ function OrderRow({ order, finished, first }: { order: Order; finished: boolean;
     .map((c) => t('without', { x: compName(c!, lang).toLowerCase() }));
 
   return (
-    <View style={{ marginBottom: 14, borderRadius: radius.xl, backgroundColor: colors.card, borderWidth: 1, borderColor: myTurn ? colors.brand : colors.line, overflow: 'hidden' }}>
-      {myTurn ? (
-        <View style={{ backgroundColor: colors.brand, paddingHorizontal: 16, paddingVertical: 10 }}>
-          <T v="subhead" weight="700" color={colors.onBrand}>
-            {t('yourTurn')} · {t('yourTurnSub')}
-          </T>
-        </View>
-      ) : null}
-
+    <View style={{ marginBottom: 14, borderRadius: radius.xl, backgroundColor: colors.card, borderWidth: myTurn ? 1.5 : 1, borderColor: myTurn ? colors.brand : colors.line, ...shadow }}>
       <View style={{ padding: 14 }}>
         <View style={{ flexDirection: 'row' }}>
           <DishTile emoji={dish.emoji} id={dish.id} size={80} />
@@ -150,7 +143,7 @@ function OrderRow({ order, finished, first }: { order: Order; finished: boolean;
               <T v="headline" numberOfLines={2} style={{ flex: 1, paddingRight: 8 }}>
                 {dishName(dish, lang)}
               </T>
-              <T v="headline">{money(order.price + order.fee)}</T>
+              <Price amount={order.price + order.fee} list={order.listPrice ? order.listPrice + order.fee : undefined} />
             </View>
             {order.onCredit ? (
               <T v="caption" weight="700" color={colors.warm} style={{ marginTop: 2 }}>
@@ -163,7 +156,7 @@ function OrderRow({ order, finished, first }: { order: Order; finished: boolean;
 
         {removedNames.length ? (
           <View style={{ marginTop: 12, padding: 14, borderRadius: radius.md, backgroundColor: colors.brand }}>
-            <T v="footnote" weight="600" color="rgba(255,255,255,0.75)">
+            <T v="footnote" weight="600" color="rgba(255,255,255,0.88)">
               {t('yourDish', { dish: dishName(dish, lang) })}
             </T>
             <T v="title2" color={colors.onBrand} style={{ marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.3 }}>
@@ -253,7 +246,7 @@ export default function Orders() {
   const today = dateKey(new Date());
 
   return (
-    <Screen topPad={10}>
+    <Screen topPad={10} fixedHeader>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
         <T v="title" numberOfLines={1} style={{ flex: 1, paddingRight: 12 }}>
           {t('ordersTitle')}

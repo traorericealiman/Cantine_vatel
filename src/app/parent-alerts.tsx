@@ -72,7 +72,7 @@ export default function ParentAlerts() {
               setSaved(false);
             }}
             placeholder={t('otherAmount')}
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor="#64748B"
             keyboardType="number-pad"
             style={{ flex: 1, paddingVertical: 15, fontSize: 17, color: colors.text, ...font('400'), ...noOutline }}
           />

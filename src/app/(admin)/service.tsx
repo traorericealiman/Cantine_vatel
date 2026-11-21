@@ -47,7 +47,7 @@ export default function Service() {
   const rows = dayRows(day, dayStats).sort((a, b) => b.total - a.total);
 
   return (
-    <Screen topPad={10}>
+    <Screen topPad={10} fixedHeader>
       <AdminHeader title={t('tabService')} subtitle={t('aServiceFor', { day: longDay(day, lang) })} />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20, marginBottom: 14 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
@@ -78,7 +78,7 @@ export default function Service() {
               <T v="headline" color={colors.onBrand}>
                 {t('aQrTitle')}
               </T>
-              <T v="footnote" color="rgba(255,255,255,0.75)" style={{ marginTop: 2 }}>
+              <T v="footnote" color="rgba(255,255,255,0.88)" style={{ marginTop: 2 }}>
                 {t('aQrSub')}
               </T>
               <T v="footnote" weight="700" color={colors.onBrand} style={{ marginTop: 6 }}>

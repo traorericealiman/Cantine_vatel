@@ -58,7 +58,7 @@ export default function Feedback() {
           value={note}
           onChangeText={setNote}
           placeholder={t('feedbackPlaceholder')}
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor="#64748B"
           multiline
           style={{ marginTop: 16, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, padding: 16, minHeight: 120, fontSize: 16, color: colors.text, textAlignVertical: 'top', ...font('400'), ...noOutline }}
         />

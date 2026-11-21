@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AdminHeader } from '../../components/admin';
 import { Reveal, Tap } from '../../components/fx';
+import { DONE_BAR_ID, DoneBar } from '../../components/pay';
 import { Button, Card, DishPhoto, DishTile, Screen, T, Tag } from '../../components/ui';
 import { Cat, Dish, serviceDays } from '../../lib/data';
 import { Key, cap, dayNumber, dishName, longDay, money, shortDay } from '../../lib/i18n';
-import { colors, radius } from '../../lib/theme';
+import { colors, font, noOutline, radius } from '../../lib/theme';
 import { adminMenu, bestOf, useAdmin } from '../../store/admin';
 import { useI18n } from '../../store/app';
 
@@ -45,6 +46,49 @@ function DishPicker({ list, onPick }: { list: Dish[]; onPick: (d: Dish) => void 
   );
 }
 
+/** Nombre de plats que la cuisine peut préparer pour cette ligne du menu (vide = illimité) et plats déjà pris. */
+function Quota({ day, slot, dishId }: { day: string; slot: string; dishId: string }) {
+  const { t } = useI18n();
+  const cap = useAdmin((s) => s.capacity[`${day}|${slot}`]);
+  const taken = useAdmin((s) => s.taken[`${day}|${dishId}`] ?? 0);
+  const setCapacity = useAdmin((s) => s.setCapacity);
+  // Le quota arrive de la base après l'ouverture : sans saisie en cours, le champ affiche toujours la valeur enregistrée.
+  const [draft, setDraft] = useState<string | null>(null);
+  const text = draft ?? (cap == null ? '' : String(cap));
+  const save = () => {
+    if (draft === null) return;
+    const next = draft === '' ? null : parseInt(draft, 10) || 0;
+    setDraft(null);
+    if (next !== (cap ?? null)) setCapacity(day, slot, next);
+  };
+  const full = cap != null && taken >= cap;
+  return (
+    <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.brandSoft, borderRadius: radius.md, paddingLeft: 14, paddingRight: 7, paddingVertical: 3 }}>
+        <View style={{ flex: 1, paddingVertical: 10 }}>
+          <T v="subhead" weight="600">
+            {t('aCapacity')}
+          </T>
+          <T v="caption" weight="600" color={full ? colors.red : colors.muted}>
+            {cap == null ? t('aCapacityTaken', { ordered: taken }) : t('aCapacityCount', { ordered: taken, left: Math.max(0, cap - taken) })}
+          </T>
+        </View>
+        <TextInput
+          value={text}
+          onChangeText={(v) => setDraft(v.replace(/\D/g, ''))}
+          onBlur={save}
+          onEndEditing={save}
+          placeholder={t('aCapacityPlaceholder')}
+          placeholderTextColor="#64748B"
+          keyboardType="number-pad"
+          inputAccessoryViewID={DONE_BAR_ID}
+          style={{ width: 104, height: 44, textAlign: 'center', paddingHorizontal: 8, fontSize: 17, color: colors.text, backgroundColor: colors.card, borderWidth: 1.5, borderColor: cap == null ? colors.line : colors.brand, borderRadius: radius.sm, ...font('600'), ...noOutline }}
+        />
+      </View>
+    </View>
+  );
+}
+
 /** Planification : un jour, ses plats par catégorie, remplacement par les plats les plus aimés, puis publication. */
 export default function Menus() {
   const { t, lang } = useI18n();
@@ -62,7 +106,7 @@ export default function Menus() {
   const cats: Cat[] = ['starter', 'main', 'dessert'];
 
   return (
-    <Screen topPad={10}>
+    <Screen topPad={10} fixedHeader>
       <AdminHeader title={t('tabMenus')} />
 
       <Tap onPress={() => router.push('/admin-dishes' as any)} scale={0.98} style={{ marginBottom: 16 }}>
@@ -73,7 +117,7 @@ export default function Menus() {
               {t('aCatalogCount', { n: catalog.length })} · {t('aAddDish')}
             </T>
           </View>
-          <T v="title2" color="#CBD5E1">
+          <T v="title2" color="#64748B">
             ›
           </T>
         </Card>
@@ -151,6 +195,8 @@ export default function Menus() {
                     </View>
                   </View>
 
+                  <Quota key={`${day}-${slot}-${dish.id}`} day={day} slot={slot} dishId={dish.id} />
+
                   {open === slot ? (
                     <View style={{ paddingBottom: 14 }}>
                       <T v="caption" color={colors.muted} style={{ marginLeft: 14, marginBottom: 8 }}>
@@ -197,6 +243,10 @@ export default function Menus() {
       ) : (
         <Button label={t('aPublish')} style={{ marginTop: 22 }} onPress={() => publish(day)} />
       )}
+      <T v="footnote" color={colors.muted} style={{ marginTop: 14, marginLeft: 4 }}>
+        {t('aCapacityHint')}
+      </T>
+      <DoneBar />
     </Screen>
   );
 }

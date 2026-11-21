@@ -58,7 +58,7 @@ export default function AdminReviews() {
                       {list.length}
                     </T>
                   </View>
-                  <T v="title2" color="#CBD5E1" style={{ marginLeft: 8 }}>
+                  <T v="title2" color="#64748B" style={{ marginLeft: 8 }}>
                     {isOpen ? '⌄' : '›'}
                   </T>
                 </View>

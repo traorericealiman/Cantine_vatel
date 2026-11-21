@@ -1,5 +1,6 @@
-// Photos des plats (Wikimedia Commons, licences libres : voir credits.ts).
+// Photos des plats (Wikimedia Commons et Unsplash, licences libres : voir credits.ts).
 export const dishImages: Record<string, any> = {
+  kedjenou: require('../../assets/dishes/kedjenou.jpg'),
   garba: require('../../assets/dishes/garba.jpg'),
   'att-poisson': require('../../assets/dishes/att-poisson.jpg'),
   tcheb: require('../../assets/dishes/tcheb.jpg'),

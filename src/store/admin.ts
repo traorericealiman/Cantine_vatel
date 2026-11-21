@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { Platform } from 'react-native';
 import { File } from 'expo-file-system';
-import { Allergen, CREDIT_FEE_RATE, Cat, DISHES, Dish, MAX_CREDIT_DISHES, PROMO, SETTINGS, addDays, dateKey, defaultMenu, serviceDays, setCreditRule } from '../lib/data';
+import { Allergen, CREDIT_FEE_RATE, Cat, DISHES, Dish, MAX_CREDIT_DISHES, OFFERS, Offer, OfferId, SETTINGS, addDays, dateKey, defaultMenu, serviceDays, setCreditRule } from '../lib/data';
 import { loadGlobal, useApp } from './app';
 
 /**
@@ -215,14 +215,19 @@ interface AdminState {
   inventoryDone: boolean;
   reportExported: boolean;
   cutoff: number;
-  promoPrice: number;
-  promoFee: number;
+  offers: Offer[];
+  /** Nombre de plats fixé pour chaque ligne du menu (`jour|ligne`) ; absent = illimité. */
+  capacity: Record<string, number | null>;
+  /** Plats déjà commandés (`jour|plat`). */
+  taken: Record<string, number>;
   demoMode: boolean;
   setDemoMode: (on: boolean) => void;
   creditMax: number;
   creditRate: number;
   setCredit: (max: number, rate: number) => void;
   stats: Dash;
+  /** Vrai dès que les chiffres ont été reçus de la base : avant, on affiche « — » plutôt qu'un faux zéro. */
+  statsReady: boolean;
   comments: Comment[];
 
   loadService: () => Promise<void>;
@@ -254,7 +259,8 @@ interface AdminState {
   validateWeek: () => void;
   exportReport: () => void;
   setCutoff: (minutes: number) => void;
-  setPromo: (price: number, fee: number) => void;
+  setOffer: (id: OfferId, patch: { fee?: number; pct?: number }) => void;
+  setCapacity: (day: string, slot: string, n: number | null) => void;
 }
 
 export const useAdmin = create<AdminState>((set, get) => ({
@@ -280,8 +286,9 @@ export const useAdmin = create<AdminState>((set, get) => ({
   inventoryDone: false,
   reportExported: false,
   cutoff: SETTINGS.cutoff,
-  promoPrice: PROMO.dishPrice,
-  promoFee: PROMO.fee,
+  offers: [...OFFERS],
+  capacity: {},
+  taken: {},
   demoMode: SETTINGS.demo,
   setDemoMode: (on) => {
     SETTINGS.demo = on;
@@ -291,13 +298,14 @@ export const useAdmin = create<AdminState>((set, get) => ({
   creditMax: MAX_CREDIT_DISHES,
   creditRate: CREDIT_FEE_RATE,
   stats: EMPTY_DASH,
+  statsReady: false,
   comments: [],
 
   // Tout recharger : plats, menus, service, stocks, chiffres.
   loadAll: async () => {
-    await get().loadCatalog();
-    await Promise.all([get().loadMenus(), get().loadService(), get().loadStock(), get().loadDashboard()]);
-    set({ cutoff: SETTINGS.cutoff, promoPrice: PROMO.dishPrice, promoFee: PROMO.fee, creditMax: MAX_CREDIT_DISHES, creditRate: CREDIT_FEE_RATE, demoMode: SETTINGS.demo });
+    // Les chiffres partent tout de suite, sans attendre le catalogue.
+    await Promise.all([get().loadDashboard(), get().loadService(), get().loadStock(), get().loadCatalog().then(() => get().loadMenus())]);
+    set({ cutoff: SETTINGS.cutoff, offers: [...OFFERS], creditMax: MAX_CREDIT_DISHES, creditRate: CREDIT_FEE_RATE, demoMode: SETTINGS.demo });
   },
 
   // Catalogue : la liste des plats (et leurs avis) relue depuis la base.
@@ -309,20 +317,25 @@ export const useAdmin = create<AdminState>((set, get) => ({
   // Menus planifiés des prochains jours de service (publiés ou non). Un jour sans menu reçoit la rotation par défaut.
   loadMenus: async () => {
     const days = serviceDays().map((d) => d.key);
-    let { data } = await supabase.from('menu_items').select('day,slot,dish_id,published').in('day', days);
+    let { data } = await supabase.from('menu_items').select('day,slot,dish_id,published,capacity').in('day', days);
     const have = new Set((data ?? []).map((r: any) => r.day));
     const missing = days.filter((d) => !have.has(d)).flatMap((day) => defaultMenu(day).map((m) => ({ day, slot: m.slot, dish_id: m.dishId, published: false })));
     if (missing.length) {
       await supabase.from('menu_items').upsert(missing, { onConflict: 'day,slot', ignoreDuplicates: true });
-      data = (await supabase.from('menu_items').select('day,slot,dish_id,published').in('day', days)).data;
+      data = (await supabase.from('menu_items').select('day,slot,dish_id,published,capacity').in('day', days)).data;
     }
     const menu: Record<string, Record<string, string>> = {};
     const published: Record<string, boolean> = {};
+    const capacity: Record<string, number | null> = {};
     (data ?? []).forEach((r: any) => {
       (menu[r.day] ??= {})[r.slot] = r.dish_id;
+      capacity[`${r.day}|${r.slot}`] = r.capacity;
       published[r.day] = (published[r.day] ?? true) && r.published;
     });
-    set({ menu, published });
+    const ords = await supabase.from('orders').select('day,dish_id').in('day', days).neq('status', 'cancelled');
+    const taken: Record<string, number> = {};
+    (ords.data ?? []).forEach((r: any) => (taken[`${r.day}|${r.dish_id}`] = (taken[`${r.day}|${r.dish_id}`] ?? 0) + 1));
+    set({ menu, published, capacity, taken });
   },
 
   // Service du jour : tout est enregistré dans la base, les élèves le voient en direct.
@@ -410,7 +423,7 @@ export const useAdmin = create<AdminState>((set, get) => ({
   // Chiffres du tableau de bord (recettes, ventes, prévisions…) et commentaires, calculés par la base.
   loadDashboard: async () => {
     const [d, c] = await Promise.all([supabase.rpc('admin_dashboard', { p_day: serviceDay() }), supabase.rpc('admin_comments')]);
-    if (d.data) set({ stats: { ...EMPTY_DASH, ...(d.data as Dash) } });
+    if (d.data) set({ stats: { ...EMPTY_DASH, ...(d.data as Dash) }, statsReady: true });
     set({
       comments: ((c.data as any[]) ?? []).map((r) => ({ dishId: r.dish_id, author: r.author, vote: r.vote, text: r.comment })),
     });
@@ -537,8 +550,14 @@ export const useAdmin = create<AdminState>((set, get) => ({
 
   // Remplacer un plat : le jour repasse en brouillon (non publié) jusqu'à la publication.
   setMenuDish: (day, slot, dishId) => {
-    set((s) => ({ menu: { ...s.menu, [day]: { ...s.menu[day], [slot]: dishId } }, published: { ...s.published, [day]: false } }));
-    supabase.from('menu_items').upsert({ day, slot, dish_id: dishId, published: false }, { onConflict: 'day,slot' }).then(() => {});
+    set((s) => ({ menu: { ...s.menu, [day]: { ...s.menu[day], [slot]: dishId } }, published: { ...s.published, [day]: false }, capacity: { ...s.capacity, [`${day}|${slot}`]: null } }));
+    supabase.from('menu_items').upsert({ day, slot, dish_id: dishId, published: false, capacity: null }, { onConflict: 'day,slot' }).then(() => {});
+  },
+  // Nombre de plats que la cuisine peut préparer : les premiers arrivés sont servis, les autres doivent choisir un autre plat.
+  setCapacity: (day, slot, n) => {
+    const v = n === null ? null : Math.max(0, Math.round(n));
+    set((s) => ({ capacity: { ...s.capacity, [`${day}|${slot}`]: v } }));
+    supabase.from('menu_items').update({ capacity: v }).eq('day', day).eq('slot', slot).then(() => get().loadMenus());
   },
   publish: (day) => {
     set((s) => ({ published: { ...s.published, [day]: true } }));
@@ -587,11 +606,14 @@ export const useAdmin = create<AdminState>((set, get) => ({
     set({ creditMax: m, creditRate: r });
     supabase.from('settings').update({ max_credit: m, credit_fee_rate: r }).eq('id', 1).then(() => {});
   },
-  setPromo: (price, fee) => {
-    PROMO.dishPrice = price;
-    PROMO.fee = fee;
-    set({ promoPrice: price, promoFee: fee });
-    supabase.from('settings').update({ promo_dish_price: price, promo_fee: fee }).eq('id', 1).then(() => {});
+  // Offres promotionnelles : prix de l'abonnement et pourcentage de réduction (lus par les élèves et les parents).
+  setOffer: (id, patch) => {
+    const o = OFFERS.find((x) => x.id === id);
+    if (!o) return;
+    if (patch.fee !== undefined) o.fee = Math.max(0, Math.round(patch.fee));
+    if (patch.pct !== undefined) o.pct = Math.max(1, Math.min(90, Math.round(patch.pct)));
+    set({ offers: OFFERS.map((x) => ({ ...x })) });
+    supabase.from('offers').update({ fee: o.fee, pct: o.pct }).eq('id', id).then(() => {});
   },
 }));
 

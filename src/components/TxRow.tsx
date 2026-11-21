@@ -40,10 +40,17 @@ export function TxRow({ tx, last }: { tx: Tx; last?: boolean }) {
           {tx.credit ? ` · ${t('thisIsCredit')}` : ''}
         </T>
       </View>
-      <T v="headline" color={income ? colors.green : colors.text}>
-        {income ? '+' : '−'}
-        {money(Math.abs(tx.amount))}
-      </T>
+      <View style={{ alignItems: 'flex-end' }}>
+        {tx.listAmount && Math.abs(tx.listAmount) > Math.abs(tx.amount) ? (
+          <T v="footnote" color={colors.muted} style={{ textDecorationLine: 'line-through' }}>
+            {money(Math.abs(tx.listAmount))}
+          </T>
+        ) : null}
+        <T v="headline" color={income ? colors.green : colors.text}>
+          {income ? '+' : '−'}
+          {money(Math.abs(tx.amount))}
+        </T>
+      </View>
     </View>
   );
 }

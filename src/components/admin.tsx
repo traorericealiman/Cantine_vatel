@@ -67,7 +67,7 @@ export function BarChart({ data, unit = 'money' }: { data: { label: string; valu
         const last = i === data.length - 1;
         return (
           <View key={d.label + i} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-            <T v="caption" weight="600" color={last ? colors.text : colors.muted} style={{ fontSize: 10, marginBottom: 4 }}>
+            <T v="caption" weight="600" numberOfLines={1} color={last ? colors.text : colors.muted} style={{ fontSize: 11, lineHeight: 15, marginBottom: 4 }}>
               {unit === 'money' ? compact(d.value) : d.value.toLocaleString('fr-FR')}
             </T>
             <View
@@ -79,7 +79,7 @@ export function BarChart({ data, unit = 'money' }: { data: { label: string; valu
                 backgroundColor: last ? colors.brand : '#E2E8F0',
               }}
             />
-            <T v="caption" color={colors.muted} style={{ marginTop: 6 }}>
+            <T v="caption" numberOfLines={1} color={colors.muted} style={{ fontSize: 12, lineHeight: 16, marginTop: 6 }}>
               {d.label}
             </T>
           </View>

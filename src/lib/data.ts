@@ -21,6 +21,8 @@ export interface Dish {
   allergens: Allergen[];
   likes: number; // % de pouces verts
   votes: number;
+  up?: number; // nombre de 👍
+  down?: number; // nombre de 👎
   custom?: boolean;
   table: string;
   /** Adresse de la photo (Supabase Storage). Sans photo : image locale du plat, sinon emoji. */
@@ -206,8 +208,36 @@ const WEEK_MENU: string[][] = [
   ['salade', 'att-poisson', 'garba', 'sauce-graine', 'fruits'],
 ];
 
-/** Offre promotionnelle proposée aux parents au moment de la recharge (valeurs de démonstration, à confirmer). */
-export const PROMO = { id: 'annual', dishPrice: 800, standardPrice: 1000, fee: 20000 };
+/** Offres promotionnelles : une réduction sur le prix de chaque plat pendant une durée. Valeurs relues depuis la base (l'admin règle le prix). */
+export type OfferId = 'week' | 'month' | 'year';
+export interface Offer {
+  id: OfferId;
+  pct: number;
+  days: number;
+  fee: number;
+}
+export const OFFERS: Offer[] = [
+  { id: 'week', pct: 5, days: 7, fee: 200 },
+  { id: 'month', pct: 7, days: 30, fee: 800 },
+  { id: 'year', pct: 15, days: 365, fee: 8000 },
+];
+export const offerById = (id: string): Offer => OFFERS.find((o) => o.id === id) ?? OFFERS[0];
+/** Prix d'un plat après réduction (arrondi comme la base de données). */
+export const discounted = (price: number, pct: number) => Math.round((price * (100 - pct)) / 100);
+/** Plat de référence des exemples (« un plat à 1 000 F »). */
+export const EXAMPLE_PRICE = 1000;
+
+/** Nombre de plats par jour : quota fixé par l'admin (absent = illimité) et plats déjà pris. Clé `jour|plat`. */
+export const AVAIL: Record<string, { capacity: number; ordered: number }> = {};
+export function setAvailability(rows: { day: string; dish_id: string; capacity: number; ordered: number }[]) {
+  Object.keys(AVAIL).forEach((k) => delete AVAIL[k]);
+  rows.forEach((r) => (AVAIL[`${r.day}|${r.dish_id}`] = { capacity: r.capacity, ordered: r.ordered }));
+}
+/** Plats restants pour ce jour (null = pas de limite). */
+export function remaining(day: string, dishId: string): number | null {
+  const a = AVAIL[`${day}|${dishId}`];
+  return a ? Math.max(0, a.capacity - a.ordered) : null;
+}
 
 export const CUTOFF_HOUR = 10;
 

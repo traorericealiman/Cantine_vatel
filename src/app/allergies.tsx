@@ -83,7 +83,7 @@ export default function Allergies() {
               onChangeText={setText}
               onSubmitEditing={addCustom}
               placeholder={t('addAllergyPlaceholder')}
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor="#64748B"
               returnKeyType="done"
               style={{ flex: 1, backgroundColor: colors.card, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 18, paddingVertical: 13, fontSize: 16, color: colors.text, ...font('400'), ...noOutline }}
             />

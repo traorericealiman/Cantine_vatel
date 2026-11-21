@@ -3,33 +3,60 @@ import { Switch, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { Tap } from '../components/fx';
 import { Button, Card, Field, T, KeyboardScroll } from '../components/ui';
-import { PROMO, cutoffLabel } from '../lib/data';
+import { EXAMPLE_PRICE, Offer, cutoffLabel, discounted } from '../lib/data';
 import { money } from '../lib/i18n';
-import { colors, radius } from '../lib/theme';
+import { colors } from '../lib/theme';
 import { useAdmin } from '../store/admin';
 import { useI18n } from '../store/app';
 
-/** Réglages de la cantine : heure limite de commande (par pas de 15 min, prolongeable) et prix de l'offre annuelle. */
+const OFFER_NAME = { week: 'offerWeek', month: 'offerMonth', year: 'offerYear' } as const;
+
+/** Prix de l'abonnement d'une offre (semaine, mois ou année) ; la réduction est fixe et indiquée en exemple. */
+function OfferFee({ offer }: { offer: Offer }) {
+  const { t } = useI18n();
+  const setOffer = useAdmin((s) => s.setOffer);
+  const [fee, setFee] = useState(String(offer.fee));
+  const [saved, setSaved] = useState(false);
+  const value = parseInt(fee.replace(/\D/g, ''), 10) || 0;
+  return (
+    <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.line }}>
+      <T v="headline">{t(OFFER_NAME[offer.id])} · −{offer.pct} %</T>
+      <T v="footnote" color={colors.muted} style={{ marginTop: 2, marginBottom: 10 }}>
+        {t('offerExample', { full: money(EXAMPLE_PRICE), price: money(discounted(EXAMPLE_PRICE, offer.pct)) })}
+      </T>
+      <Field
+        label={t('aPromoFee')}
+        value={fee}
+        onChangeText={(v) => {
+          setFee(v.replace(/\D/g, ''));
+          setSaved(false);
+        }}
+        keyboardType="number-pad"
+      />
+      <Button
+        label={saved ? t('aSaved') : t('aPromoSave')}
+        kind={saved ? 'soft' : 'primary'}
+        disabled={value <= 0}
+        onPress={() => {
+          setOffer(offer.id, { fee: value });
+          setSaved(true);
+        }}
+      />
+    </View>
+  );
+}
+
+/** Réglages de la cantine : heure limite de commande (par pas de 15 min, prolongeable), règle du crédit, offres. */
 export default function AdminSettings() {
   const { t, lang } = useI18n();
   const cutoff = useAdmin((s) => s.cutoff);
   const setCutoff = useAdmin((s) => s.setCutoff);
-  const promoPrice = useAdmin((s) => s.promoPrice);
-  const promoFee = useAdmin((s) => s.promoFee);
-  const setPromo = useAdmin((s) => s.setPromo);
+  const offers = useAdmin((s) => s.offers);
   const creditMax = useAdmin((s) => s.creditMax);
   const creditRate = useAdmin((s) => s.creditRate);
   const setCredit = useAdmin((s) => s.setCredit);
   const demoMode = useAdmin((s) => s.demoMode);
   const setDemoMode = useAdmin((s) => s.setDemoMode);
-  const [price, setPrice] = useState(String(promoPrice));
-  const [fee, setFee] = useState(String(promoFee));
-  const [saved, setSaved] = useState(false);
-
-  const p = parseInt(price.replace(/\D/g, ''), 10) || 0;
-  const f = parseInt(fee.replace(/\D/g, ''), 10) || 0;
-  const promoValid = p > 0 && p < PROMO.standardPrice && f > 0;
-
   const step = (label: string, onPress: () => void) => (
     <Tap
       onPress={onPress}
@@ -92,48 +119,12 @@ export default function AdminSettings() {
 
         <Card style={{ marginTop: 16 }}>
           <T v="headline">{t('aPromoTitle')}</T>
-          <T v="subhead" color={colors.muted} style={{ marginTop: 4, marginBottom: 16 }}>
+          <T v="subhead" color={colors.muted} style={{ marginTop: 4, marginBottom: 6 }}>
             {t('aPromoHint')}
           </T>
-          <Field
-            label={t('aPromoPrice')}
-            value={price}
-            onChangeText={(v) => {
-              setPrice(v.replace(/\D/g, ''));
-              setSaved(false);
-            }}
-            keyboardType="number-pad"
-          />
-          <T v="footnote" color={colors.muted} style={{ marginTop: -6, marginBottom: 14, marginLeft: 4 }}>
-            {t('aStandardPrice', { p: money(PROMO.standardPrice) })}
-          </T>
-          <Field
-            label={t('aPromoFee')}
-            value={fee}
-            onChangeText={(v) => {
-              setFee(v.replace(/\D/g, ''));
-              setSaved(false);
-            }}
-            keyboardType="number-pad"
-          />
-          <View style={{ backgroundColor: colors.brandTint, borderRadius: radius.md, padding: 12, marginBottom: 14 }}>
-            <T v="subhead">
-              {money(p)} / {money(PROMO.standardPrice)} · {money(f)}
-            </T>
-          </View>
-          <Button
-            label={t('aPromoSave')}
-            disabled={!promoValid}
-            onPress={() => {
-              setPromo(p, f);
-              setSaved(true);
-            }}
-          />
-          {saved ? (
-            <T v="footnote" weight="600" color={colors.green} align="center" style={{ marginTop: 10 }}>
-              {t('aSaved')}
-            </T>
-          ) : null}
+          {offers.map((o) => (
+            <OfferFee key={o.id} offer={o} />
+          ))}
         </Card>
       </KeyboardScroll>
     </>

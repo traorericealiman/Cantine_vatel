@@ -46,7 +46,7 @@ function DarkInput({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="rgba(255,255,255,0.45)"
+        placeholderTextColor="rgba(255,255,255,0.7)"
         secureTextEntry={secure && hidden}
         autoCapitalize={autoCapitalize}
         autoCorrect={false}
@@ -123,7 +123,7 @@ export default function Login() {
           <T color={colors.white} align="center" style={{ fontSize: 30, lineHeight: 36, letterSpacing: -0.6, ...font('700') }}>
             {t('loginTitle')}
           </T>
-          <T v="subhead" color="rgba(255,255,255,0.65)" align="center" style={{ marginTop: 6, marginBottom: 28 }}>
+          <T v="subhead" color="rgba(255,255,255,0.88)" align="center" style={{ marginTop: 6, marginBottom: 28 }}>
             {t('loginSub')}
           </T>
         </Reveal>
@@ -154,14 +154,14 @@ export default function Login() {
             </T>
           </Pressable>
           {forgot ? (
-            <T v="footnote" color="rgba(255,255,255,0.6)" align="center" style={{ marginBottom: 8 }}>
+            <T v="footnote" color="rgba(255,255,255,0.88)" align="center" style={{ marginBottom: 8 }}>
               {t('forgotInfo')}
             </T>
           ) : null}
         </Reveal>
 
 
-        <T v="caption" color="rgba(255,255,255,0.45)" align="center" style={{ marginTop: 18, paddingHorizontal: 12 }}>
+        <T v="caption" color="rgba(255,255,255,0.88)" align="center" style={{ marginTop: 18, paddingHorizontal: 12 }}>
           {t('loginTerms')}
         </T>
       </ScrollView>

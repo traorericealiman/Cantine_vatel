@@ -3,15 +3,16 @@ import { Platform, TextStyle } from 'react-native';
 export const colors = {
   brand: '#0F172A',
   brandDark: '#1E293B',
-  brandSoft: '#F1F5F9',
+  brandSoft: '#F2F4F8',
   brandTint: '#F8FAFC',
   brandText: '#0F172A',
   onBrand: '#FFFFFF',
   bg: '#FFFFFF',
   card: '#FFFFFF',
   text: '#0F172A',
-  muted: '#64748B',
-  line: '#E8ECF2',
+  muted: '#475569',
+  subtle: '#334155',
+  line: '#EEF1F6',
   green: '#16A34A',
   greenSoft: '#EAF7EF',
   red: '#DC2626',
@@ -22,15 +23,15 @@ export const colors = {
   night: '#0B1222',
 };
 
-export const radius = { sm: 10, md: 14, lg: 20, xl: 24, pill: 999 };
+export const radius = { sm: 12, md: 16, lg: 24, xl: 30, pill: 999 };
 
-/** Ombre très légère : la hiérarchie vient surtout des contours fins et de l'espacement. */
+/** Relief doux et large : les cartes flottent sur le fond blanc sans contour marqué. */
 export const shadow = {
   shadowColor: '#0F172A',
-  shadowOpacity: 0.05,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  shadowOpacity: 0.08,
+  shadowRadius: 24,
+  shadowOffset: { width: 0, height: 10 },
+  elevation: 4,
 } as const;
 
 const webStack =
@@ -64,15 +65,15 @@ export type Variant =
   | 'caption';
 
 export const variants: Record<Variant, TextStyle> = {
-  largeTitle: { fontSize: 34, lineHeight: 41, letterSpacing: -0.6, ...font('700') },
-  title: { fontSize: 28, lineHeight: 34, letterSpacing: -0.5, ...font('700') },
-  title2: { fontSize: 22, lineHeight: 28, letterSpacing: -0.3, ...font('700') },
-  headline: { fontSize: 17, lineHeight: 22, letterSpacing: -0.2, ...font('600') },
+  largeTitle: { fontSize: 36, lineHeight: 42, letterSpacing: -1.1, ...font('700') },
+  title: { fontSize: 30, lineHeight: 36, letterSpacing: -0.9, ...font('700') },
+  title2: { fontSize: 22, lineHeight: 28, letterSpacing: -0.5, ...font('700') },
+  headline: { fontSize: 17, lineHeight: 22, letterSpacing: -0.3, ...font('600') },
   body: { fontSize: 17, lineHeight: 22, ...font('400') },
   callout: { fontSize: 16, lineHeight: 21, ...font('400') },
   subhead: { fontSize: 15, lineHeight: 20, ...font('400') },
-  footnote: { fontSize: 13, lineHeight: 18, ...font('400') },
-  caption: { fontSize: 12, lineHeight: 16, ...font('500') },
+  footnote: { fontSize: 14, lineHeight: 19, ...font('400') },
+  caption: { fontSize: 13, lineHeight: 17, ...font('500') },
 };
 
 /** Supprime le contour de focus du navigateur (version web uniquement). */

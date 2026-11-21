@@ -19,7 +19,7 @@ export default function Stocks() {
   const low = sorted.filter((i) => i.stock < i.threshold).length;
 
   return (
-    <Screen topPad={10}>
+    <Screen topPad={10} fixedHeader>
       <AdminHeader title={t('tabStocks')} />
 
       <Reveal delay={40}>

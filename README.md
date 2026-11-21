@@ -1,69 +1,127 @@
 # Cantine de Vatel
 
-Application de cantine pour une école de Côte d'Ivoire. Les élèves commandent leurs repas depuis leur téléphone, les parents rechargent le wallet de leurs enfants par Mobile Money (Wave, Orange, MTN, Moov, Djamo via Jèko), et l'équipe de la cantine gère le service, les menus et les stocks.
+Application de gestion de cantine pour une école de Côte d'Ivoire.
 
-Le projet a deux applications et un backend :
+Les élèves et employés commandent leurs repas depuis leur téléphone et paient avec un wallet. Les parents suivent et rechargent le compte de leurs enfants par Mobile Money. L'équipe de la cantine gère les menus, les quantités, le service, les stocks et les chiffres de l'activité.
 
-| Dossier | Contenu |
-| --- | --- |
-| `src/` | **Application mobile** (Expo SDK 58, React Native, expo-router, zustand, TypeScript) : espaces élève/employé, parent et administrateur |
-| `web-admin/` | **Console web d'administration** (React + Vite) : tableau de bord et gestion des utilisateurs |
-| `supabase/` | Backend : migrations SQL (schéma, règles métier, sécurité) et fonctions Edge (`create-payment`, `jeko-webhook`, `manage-users`) |
-| `tests/` | Tests automatiques des règles métier |
-| `docs/` | Spécifications |
-
-## Fonctionnalités
+## Accès rapide
 
 ### Application mobile
 
-**Espace élève / employé**
-- Menu de la semaine avec photos, composition du plat (on peut retirer des ingrédients) et avis 👍 / 👎.
-- Commande jusqu'à l'heure limite fixée par l'admin : un seul plat par catégorie et par jour (entrée, plat, dessert). Le solde est débité tout de suite, l'annulation avant l'heure limite rembourse.
-- Wallet : solde, historique, recharge par Mobile Money.
-- Crédit d'urgence : jusqu'à 3 plats à crédit (le premier au prix normal, les suivants avec des frais de dépannage). La prochaine recharge rembourse la dette en premier.
-- Retrait du repas en scannant le QR code affiché au comptoir.
-- Favoris : on garde ses plats préférés et l'app propose de les commander dès qu'ils sont au menu (« Me prévenir »). Aucune commande sans confirmation.
-- Recommandations personnalisées (commandes, avis, favoris) ; les plats concernés par les allergies déclarées ne sont jamais recommandés.
-- Allergies (cases et saisie libre), notifications (cloche), signalement « plat non reçu », français / anglais.
-
-**Espace parent**
-- Un ou plusieurs enfants, avec leur solde, leurs repas à venir et leur historique (le parent ne commande jamais à la place de l'enfant).
-- Recharge du wallet de chaque enfant, offre annuelle, alerte « solde bas » avec seuil réglable.
-
-**Espace administrateur**
-- Tableau de bord jour / semaine / mois : recettes, plats vendus, satisfaction, plat préféré, prévisions.
-- Service en direct : appel par plat ou par table, variantes de plats (ingrédients retirés) avec couleurs, lot allergie séparé, signalements.
-- Menus : catalogue de plats (avec photos), menu de chaque jour, publication.
-- Stocks : ingrédients, recettes, achats, consommation, inventaire hebdomadaire.
-- QR code de retrait, réglages (heure limite, prix de l'offre annuelle), avis des élèves, rapport détaillé exportable en Excel.
+| Rôle | Identifiant | Mot de passe |
+| --- | --- | --- |
+| Élève | `VAT-24-0412` | `AZERTY@1234` |
+| Parent | `parent.koffi` | `AZERTY@1234` |
+| Admin restaurant | `admin` | `AZERTY@1234` |
 
 ### Console web d'administration
 
-- Tableau de bord : KPI jour / semaine / mois, graphiques recettes-dépenses et plats vendus, indicateurs de stock.
-- Utilisateurs : création des comptes élèves et parents, réinitialisation des mots de passe, liens parents ↔ élèves.
+- **Adresse :** https://vatel-admin.vercel.app/
+- **Identifiant :** `admin.web`
+- **Mot de passe :** `AdminWeb2026`
 
-## Lancer le projet
+> Ces identifiants donnent accès à la vraie base de données. Ce README doit rester dans un dépôt **privé**, et les mots de passe doivent être changés avant l'ouverture aux vrais utilisateurs.
 
-Prérequis : Node.js 20 ou plus récent, et l'application **Expo Go** sur le téléphone (ou un émulateur Android / simulateur iOS).
+## Vue d'ensemble
 
-### Version mobile
+| Partie | Dossier | Technologies | Rôle |
+| --- | --- | --- | --- |
+| Application mobile | `src/` | Expo SDK 58, React Native, expo-router, zustand, TypeScript | Espaces élève/employé, parent et admin restaurant |
+| Console web | `web-admin/` | React, Vite, Recharts, TypeScript, Vercel | Pilotage et gestion des utilisateurs |
+| Backend | `supabase/` | PostgreSQL, Auth, Storage, Realtime, Edge Functions | Données, règles métier, sécurité et paiements |
+| Paiement | `supabase/functions/` | Jèko | Wave, Orange Money, MTN, Moov et Djamo |
+| Tests | `tests/` | Node.js | Règles métier |
+| Documentation | `docs/` | PDF | Spécifications |
+
+```text
+Application mobile ─┐
+                    ├── Supabase (base, règles SQL, authentification, temps réel)
+Console web ────────┘        │
+                             ├── create-payment ──> Jèko
+                             └── jeko-webhook   <── Confirmation du paiement
+```
+
+## Fonctionnalités
+
+### Espace élève / employé
+
+**Menu et commande**
+- Menu de la semaine avec photos, composition, prix, avis 👍 / 👎 et nombre de plats disponibles.
+- Commande jusqu'à l'heure limite fixée par l'admin.
+- Un seul plat par catégorie et par jour : une entrée, un plat de résistance, un dessert.
+- Possibilité de retirer certains ingrédients.
+- Quantités limitées : les premiers arrivés sont servis. Quand un plat est complet, il faut en choisir un autre.
+- Annulation remboursée tant que l'heure limite n'est pas passée et que le plat n'a pas été appelé.
+
+**Wallet**
+- Solde, historique des opérations et recharge par Mobile Money.
+- Le solde est débité dès la confirmation de la commande.
+- Crédit d'urgence : 3 plats maximum, le premier au prix normal, les deux suivants avec 10 % de frais de dépannage.
+- La prochaine recharge rembourse d'abord la dette.
+
+**Offres promotionnelles**
+
+| Offre | Durée | Réduction | Exemple sur un plat à 1 000 F |
+| --- | --- | --- | --- |
+| Semaine | 7 jours | 5 % | 950 F |
+| Mois | 30 jours | 7 % | 930 F |
+| Année | 365 jours | 15 % | 850 F |
+
+- Une seule offre à la fois : il faut attendre la fin de l'offre en cours pour en prendre une autre.
+- L'offre active, sa réduction et sa date de fin sont visibles sur la carte wallet.
+- Le prix normal est barré, et seul le prix réduit est débité.
+
+**Favoris**
+- **Désactivé :** le plat reste simplement dans les favoris.
+- **Me demander :** l'élève reçoit une proposition à accepter quand le plat est disponible.
+- **Automatique :** le plat est commandé dès qu'il est disponible, si le solde suffit et s'il ne contient pas d'allergène déclaré.
+- Si une place se libère sur un plat complet, elle est proposée ou attribuée aux favoris suivants.
+
+**Autres fonctions**
+- Recommandations selon les commandes, avis et favoris.
+- Allergies déclarées : les plats concernés affichent un avertissement et ne sont jamais recommandés.
+- Retrait du repas en scannant le QR code du comptoir, même avec une connexion instable.
+- Notifications dans l'application, signalement d'un plat non reçu, FAQ, français et anglais.
+
+### Espace parent
+
+- Suivi d'un ou plusieurs enfants : solde, dette, repas à venir et historique.
+- Recharge du wallet de chaque enfant.
+- Souscription d'une offre semaine, mois ou année.
+- Alerte de solde bas avec seuil réglable.
+- Le parent ne commande jamais à la place de l'enfant.
+
+### Espace admin restaurant (mobile)
+
+- **Accueil :** recettes, plats vendus, satisfaction, crédits, retraits, graphiques et prévisions par jour, semaine ou mois.
+- **Service :** appel par plat ou par table, variantes par ingrédients retirés, lot allergie séparé, signalements et QR code.
+- **Menus :** catalogue de plats, menu de chaque jour, **nombre de plats disponibles** et publication.
+- **Stocks :** ingrédients, recettes, achats, consommation et inventaire hebdomadaire.
+- **Profil :** avis, rapport exportable en Excel, heure limite, prix des offres et règles de crédit.
+
+### Console web
+
+- Tableau de bord : KPI par jour, semaine ou mois, recettes, dépenses, plats vendus et indicateurs de stock.
+- Utilisateurs : création des élèves et parents, réinitialisation des mots de passe, liens parent ↔ élève.
+
+## Installation
+
+Prérequis : **Node.js 20 ou plus récent** et l'application **Expo Go** sur le téléphone, ou un émulateur.
+
+### Application mobile
 
 ```bash
 npm install
-npx expo start
+npx expo start --offline
 ```
 
-Scanner le QR code affiché avec Expo Go (Android) ou l'appareil photo (iPhone). Si le téléphone et l'ordinateur ne sont pas sur le même réseau, ajouter `--tunnel`.
-
-Aperçu dans le navigateur (format téléphone) :
+Scanner ensuite le QR code avec Expo Go (Android) ou l'appareil photo (iPhone). Si le téléphone et l'ordinateur ne sont pas sur le même réseau :
 
 ```bash
-npx expo start --web
+npx expo start --tunnel
 ```
 
-Le scan du QR code de retrait utilise l'appareil photo : il faut un vrai téléphone (ou le lien de simulation en développement).
-
-### Version web (console d'administration)
+### Console web
 
 ```bash
 cd web-admin
@@ -71,44 +129,95 @@ npm install
 npm run dev
 ```
 
-La console s'ouvre sur http://localhost:5173 ; se connecter avec le compte administrateur. Pour construire la version de production : `npm run build` (le dossier `dist/` peut être déployé sur Vercel).
+La console s'ouvre sur http://localhost:5173. Pour construire la version de production :
+
+```bash
+npm run build
+```
 
 ### Vérifications
 
 ```bash
-npm run typecheck   # types TypeScript
-npm run lint        # ESLint
-npm test            # règles métier : recharge, crédit d'urgence, allergies, catégories
+npm run typecheck
+npm run lint
+npm test
 ```
 
-## Comptes de test
+Pour ajouter une dépendance à l'application mobile, utiliser `npx expo install <paquet>`.
 
-Tous les comptes ont un **solde de 0 F** : il faut d'abord recharger le wallet (Mobile Money) avant de commander.
+## Structure du projet
 
-| Rôle | Identifiant | Mot de passe |
-| --- | --- | --- |
-| Élève | `VAT-24-0413` | `Vatel2026` |
-| Élève | `VAT-24-0414` | `Vatel2026` |
-| Parent | `parent.test` (parent de `VAT-24-0413` et `VAT-24-0414`) | `Parent2026` |
-| Admin restaurant (application mobile) | `admin.test` | `Admin2026` |
-| Admin web (console `web-admin`) | `admin.web` | `AdminWeb2026` |
+```text
+src/
+  app/
+    (tabs)/       Espace élève : accueil, commandes, favoris, profil
+    (parent)/     Espace parent : accueil, historique, compte
+    (admin)/      Espace admin : accueil, service, menus, stocks, profil
+    dish/[id].tsx Fiche d'un plat
+    *.tsx         Connexion, recharge, scan, réglages et autres écrans
+  components/     Composants communs (cartes, onglets, wallet, offres, prix)
+  lib/            Thème, textes FR/EN, règles pures, données, photos, rapport
+  store/
+    app.ts        État élève et parent
+    admin.ts      État admin
+web-admin/        Console web
+supabase/
+  migrations/     Schéma, règles métier et sécurité
+  functions/      create-payment, jeko-webhook, manage-users
+tests/            Tests des règles métier
+docs/             Spécifications
+assets/dishes/    Photos des plats et crédits
+```
 
-Les deux comptes ont les mêmes droits d'administrateur ; chacun peut se connecter à l'application mobile comme à la console web.
+## Backend
 
-## Configuration
+- **Projet Supabase :** `vatel` (`mquoiwpgtjrvdicwghdx`), région `eu-west-1`.
+- **Source de vérité :** les opérations sensibles (commande, débit, crédit, remboursement, quotas, offres, retrait) sont exécutées par des fonctions SQL. L'application ne peut pas les contourner.
+- **Connexion :** l'identifiant devient `<identifiant en minuscules>@vatel.local` dans Supabase Auth.
+- **Temps réel :** les commandes, appels, signalements et notifications se mettent à jour automatiquement.
 
-Les clés publiques Supabase sont dans `src/lib/supabase.ts` (et dans `web-admin/`). Les clés Jèko ne sont jamais dans le code : elles sont enregistrées comme secrets des fonctions Edge (`JEKO_API_KEY`, `JEKO_API_KEY_ID`, `JEKO_STORE_ID`, `JEKO_WEBHOOK_SECRET`). Le webhook à déclarer chez Jèko est la fonction `jeko-webhook` du projet Supabase.
+### Fonctions Edge
 
-## Architecture
+| Fonction | Rôle |
+| --- | --- |
+| `create-payment` | Crée une demande de paiement Jèko pour une recharge ou une offre |
+| `jeko-webhook` | Vérifie la signature de Jèko, puis crédite le wallet ou active l'offre une seule fois |
+| `manage-users` | Crée et gère les comptes, réservée aux administrateurs |
 
-- **La base est la source de vérité.** Les règles qui touchent à l'argent (débit à la commande, crédit d'urgence, remboursement, retrait, recharge) sont des fonctions SQL sécurisées : le téléphone ne peut pas les contourner. Le store (`src/store/app.ts`) met l'écran à jour tout de suite puis recopie l'état du serveur.
-- **Règles pures et testées** : `src/lib/rules.ts` ; types partagés : `src/lib/types.ts` ; données et réglages : `src/lib/data.ts` ; textes FR/EN : `src/lib/i18n.ts` (jamais de texte en dur dans les écrans).
-- **Trois rôles**, un groupe d'écrans chacun : `(tabs)` élève, `(parent)`, `(admin)`. L'admin a son propre store (`src/store/admin.ts`).
-- **Paiement** : l'app appelle `create-payment`, Jèko prévient `jeko-webhook` (signature vérifiée) qui crédite le wallet une seule fois.
+### Secrets
+
+Les clés Jèko ne sont jamais dans le code. Elles sont enregistrées dans les secrets des fonctions Edge :
+
+```text
+JEKO_API_KEY
+JEKO_API_KEY_ID
+JEKO_STORE_ID
+JEKO_WEBHOOK_SECRET
+```
+
+Adresse du webhook à déclarer chez Jèko :
+
+```text
+https://mquoiwpgtjrvdicwghdx.supabase.co/functions/v1/jeko-webhook
+```
 
 ## Sécurité
 
-- Row Level Security sur toutes les tables ; chaque fonction exposée vérifie l'identité et le rôle.
-- Comptes créés uniquement par la fonction Edge `manage-users`, réservée à l'administrateur.
-- Webhook : signature obligatoire, comparée en temps constant ; montants et identifiants validés.
-- Photos des plats : lecture publique, écriture réservée à l'admin.
+- Row Level Security sur les tables : chaque utilisateur n'accède qu'à ce que son rôle autorise.
+- Fonctions SQL sensibles avec contrôle de l'identité et du rôle.
+- Verrouillage à la commande : deux élèves ne peuvent pas obtenir la dernière portion.
+- Webhook protégé par signature HMAC-SHA256, comparée en temps constant.
+- Prix des offres relus dans la base, jamais repris du téléphone.
+
+## Avant la mise en production
+
+- [ ] Changer tous les mots de passe de test.
+- [ ] Désactiver le mode démo, qui permet encore les recharges et offres sans paiement.
+- [ ] Retirer les fonctions `demo_topup` et `demo_subscribe`, ainsi que le lien de simulation du scan.
+- [ ] Retirer les offres et soldes de test de la base.
+- [ ] Valider les prix des offres (valeurs actuelles : 200 F, 800 F et 8 000 F).
+- [ ] Vérifier `JEKO_STORE_ID` et `JEKO_WEBHOOK_SECRET`, puis faire un vrai paiement de test.
+- [ ] Remplacer la photo d'illustration du kedjenou par une photo du vrai plat.
+- [ ] Ajouter l'attribution des photos sous licence CC BY / CC BY-SA (voir `src/lib/credits.ts`).
+- [ ] Activer la protection contre les mots de passe divulgués dans Supabase Auth.
+- [ ] Préparer un build EAS et Firebase si les notifications push doivent être activées.

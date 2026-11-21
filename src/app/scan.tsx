@@ -94,7 +94,7 @@ export default function Scan() {
               <T v="title" color={colors.white} align="center">
                 {t('aScanOk')}
               </T>
-              <T v="body" color="rgba(255,255,255,0.75)" align="center" style={{ marginTop: 6 }}>
+              <T v="body" color="rgba(255,255,255,0.88)" align="center" style={{ marginTop: 6 }}>
                 {online ? t('aScanOkSub') : t('aScanOffline')}
               </T>
             </>
