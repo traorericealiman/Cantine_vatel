@@ -88,7 +88,8 @@ Tous les comptes ont un **solde de 0 F** : il faut d'abord recharger le wallet (
 | Rôle | Identifiant | Mot de passe |
 | --- | --- | --- |
 | Élève | `VAT-24-0413` | `Vatel2026` |
-| Parent | `parent.test` (parent de l'élève `VAT-24-0413`) | `Parent2026` |
+| Élève | `VAT-24-0414` | `Vatel2026` |
+| Parent | `parent.test` (parent de `VAT-24-0413` et `VAT-24-0414`) | `Parent2026` |
 | Admin restaurant (application mobile) | `admin.test` | `Admin2026` |
 | Admin web (console `web-admin`) | `admin.web` | `AdminWeb2026` |
 
