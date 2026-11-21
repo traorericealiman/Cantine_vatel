@@ -87,8 +87,7 @@ Tous les comptes ont un **solde de 0 F** : il faut d'abord recharger le wallet (
 
 | Rôle | Identifiant | Mot de passe |
 | --- | --- | --- |
-| Élève | `VAT-24-0412` (Aya Koffi) | `Vatel2026` |
-| Élève | `VAT-24-0413` (Kevin Koffi) | `Vatel2026` |
+| Élève | `VAT-24-0413` | `Vatel2026` |
 | Parent | `parent.koffi` (Marie Koffi, parent d'Aya et de Kevin) | `Vatel2026` |
 | Admin restaurant (application mobile) | `admin` | `Vatel2026` |
 | Admin web (console `web-admin`) | `admin` | `Vatel2026` |
